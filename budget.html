@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>예산 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- 예산 페이지 비밀번호 잠금 -->
+  <div id="gate" style="position:fixed;inset:0;z-index:1000;display:grid;place-items:center;
+       background:radial-gradient(1000px 500px at 20% -10%,var(--teal-wash),transparent 60%),
+       radial-gradient(800px 500px at 100% 0%,var(--coral-wash),transparent 55%),var(--sand)">
+    <form id="gate-form" class="card fade-up" style="width:min(92vw,380px);text-align:center">
+      <div style="font-size:2rem">🔒</div>
+      <h2 style="margin:8px 0 4px">예산 페이지</h2>
+      <p class="cap" style="margin:0 0 16px">비밀번호를 입력하세요</p>
+      <input id="gate-pw" class="inp" type="password" inputmode="numeric"
+             placeholder="비밀번호" autocomplete="off" style="text-align:center;font-size:1.1rem" />
+      <div id="gate-err" style="color:var(--coral-deep);font-size:.85rem;min-height:20px;margin:8px 0"></div>
+      <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center">확인</button>
+      <div style="margin-top:12px"><a href="index.html" class="cap" style="color:var(--muted)">← 홈으로</a></div>
+    </form>
+  </div>
+  <script>
+    (function () {
+      const HASH = "d3781c68";           // 비밀번호 해시 (FNV-1a)
+      function hash(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return h.toString(16); }
+      function unlock(){ const g=document.getElementById("gate"); if(g) g.remove(); }
+      // 매번 예산 페이지에 들어올 때마다 비밀번호를 다시 입력해야 함 (기억하지 않음)
+      document.getElementById("gate-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        const pw = document.getElementById("gate-pw").value.trim();
+        if (hash(pw) === HASH) {
+          unlock();
+        } else {
+          document.getElementById("gate-err").textContent = "비밀번호가 틀렸습니다.";
+          const i = document.getElementById("gate-pw"); i.value = ""; i.focus();
+        }
+      });
+      document.getElementById("gate-pw").focus();
+    })();
+  </script>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="wave">🌊</span> 퍼스트전산 여름 야유회</a>
+      <div class="nav-links">
+        <a href="index.html">홈</a>
+        <a href="schedule.html">일정표</a>
+        <a href="attendees.html">참석자</a>
+        <a href="budget.html" class="active">예산</a>
+        <a href="checklist.html">준비물</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-head fade-up" style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1>💰 예산</h1>
+        <p>항목 추가/수정/삭제 시 합계·잔액이 자동으로 다시 계산됩니다</p>
+      </div>
+      <span id="mode"></span>
+    </div>
+
+    <!-- 요약 -->
+    <div class="grid cols-3" id="summary"></div>
+
+    <!-- 소진율 -->
+    <div class="card" style="margin-top:18px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <strong>예산 소진율</strong>
+        <span id="rate" style="font-weight:800;color:var(--teal-deep)"></span>
+      </div>
+      <div class="bar"><span id="total-bar"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;color:var(--muted);font-size:.85rem">
+        <span id="spent-lbl"></span><span id="remain-lbl"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <label style="font-weight:700">총 예산</label>
+        <input class="inp num" id="total-input" style="max-width:200px" inputmode="numeric" />
+        <span class="cap">원</span>
+        <button class="btn btn-primary btn-icon" id="total-save" style="padding:8px 14px">저장</button>
+      </div>
+    </div>
+
+    <!-- 항목 -->
+    <h2 class="section-title"><span class="dot"></span> 항목별 지출</h2>
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-add">＋ 항목 추가</button>
+      <button class="btn" id="btn-edit">✏️ 편집 모드</button>
+    </div>
+
+    <div class="add-form hidden" id="add-form">
+      <div class="row">
+        <input class="inp" id="f-name" placeholder="항목명 (예: 저녁 식사)" />
+        <input class="inp" id="f-vendor" placeholder="업체 (예: 옹장골닭갈비)" />
+        <input class="inp" id="f-detail" placeholder="상세(선택)" />
+        <input class="inp num" id="f-amount" placeholder="금액(원)" inputmode="numeric" />
+        <input class="inp" id="f-cat" list="catlist" placeholder="분류" />
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="f-save">추가</button>
+        <button class="btn" id="f-cancel">취소</button>
+      </div>
+    </div>
+
+    <div class="card" id="items"></div>
+    <p class="foot">막대는 각 항목이 총 예산에서 차지하는 비중입니다.</p>
+  </main>
+
+  <datalist id="catlist">
+    <option>대관</option><option>교통</option><option>식사</option><option>안전</option><option>경품</option><option>기타</option>
+  </datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    const D = window.YAYU, T = "budget_items";
+    let items = [], total = 0, editMode = false;
+
+    document.getElementById("mode").innerHTML = UI.modePill();
+
+    async function load() {
+      items = await STORE.list(T);
+      total = Number(await STORE.getSetting("budget_total", D.budget.total));
+      document.getElementById("total-input").value = total;
+      render();
+    }
+
+    function render() {
+      const spent = items.reduce((s, i) => s + Number(i.amount || 0), 0);
+      const remain = total - spent;
+      const rate = total ? Math.round((spent / total) * 100) : 0;
+
+      document.getElementById("summary").innerHTML = [
+        { n: D.won(total), c: `총 예산 (${D.man(total)})`, coral: false },
+        { n: D.won(spent), c: `총 지출 (${items.length}개 항목)`, coral: false },
+        { n: D.won(remain), c: `남은 예산 (${D.man(remain)})`, coral: true },
+      ].map(s => `<div class="stat"><div class="num ${s.coral?"coral":""}" style="font-size:1.5rem">${s.n}</div><div class="cap">${s.c}</div></div>`).join("");
+
+      document.getElementById("rate").textContent = rate + "%";
+      document.getElementById("total-bar").style.width = Math.min(rate, 100) + "%";
+      document.getElementById("spent-lbl").textContent = "지출 " + D.won(spent);
+      document.getElementById("remain-lbl").textContent = "잔액 " + D.won(remain);
+
+      const max = Math.max(1, ...items.map(i => Number(i.amount || 0)));
+      const el = document.getElementById("items");
+
+      if (editMode) {
+        el.innerHTML = items.map(i => `
+          <div class="budget-row" data-id="${i.id}" style="grid-template-columns:1fr auto">
+            <div style="display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(110px,1fr))">
+              <input class="inp" data-f="name" value="${UI.esc(i.name)}" placeholder="항목명" />
+              <input class="inp" data-f="vendor" value="${UI.esc(i.vendor||"")}" placeholder="업체" />
+              <input class="inp" data-f="detail" value="${UI.esc(i.detail||"")}" placeholder="상세" />
+              <input class="inp num" data-f="amount" value="${Number(i.amount||0)}" inputmode="numeric" placeholder="금액" />
+              <input class="inp" data-f="cat" list="catlist" value="${UI.esc(i.cat||"")}" placeholder="분류" />
+            </div>
+            <div style="display:flex;align-items:center"><button class="btn btn-icon btn-danger" data-del="${i.id}">🗑</button></div>
+          </div>`).join("");
+        bindEdit();
+      } else {
+        const sorted = [...items].sort((a, b) => Number(b.amount) - Number(a.amount));
+        el.innerHTML = sorted.map(i => {
+          const amt = Number(i.amount || 0);
+          const pct = Math.round((amt / max) * 100);
+          const share = total ? ((amt / total) * 100).toFixed(1) : "0.0";
+          return `<div class="budget-row">
+            <div>
+              <div class="b-name">${UI.esc(i.name)} ${i.cat ? `<span class="badge badge-muted">${UI.esc(i.cat)}</span>` : ""}</div>
+              <div class="b-vendor">${UI.esc(i.vendor||"")}${i.detail ? " · " + UI.esc(i.detail) : ""}</div>
+            </div>
+            <div class="b-amt">${D.won(amt)}<br><span style="font-weight:600;color:var(--muted);font-size:.8rem">예산의 ${share}%</span></div>
+            <div class="b-bar"><div class="bar coral"><span style="width:${pct}%"></span></div></div>
+          </div>`;
+        }).join("");
+      }
+    }
+
+    function bindEdit() {
+      document.querySelectorAll('#items .budget-row[data-id]').forEach(rowEl => {
+        const id = rowEl.dataset.id;
+        rowEl.querySelectorAll("[data-f]").forEach(inp => {
+          inp.addEventListener("change", async () => {
+            let val = inp.value;
+            if (inp.dataset.f === "amount") val = Number(String(val).replace(/[^\d.-]/g, "")) || 0;
+            const patch = { [inp.dataset.f]: val };
+            await STORE.update(T, id, patch);
+            const r = items.find(x => x.id === id); if (r) Object.assign(r, patch);
+            // 금액/합계 요약만 갱신 (입력 포커스 유지 위해 전체 재렌더 X)
+            refreshSummary();
+            UI.toast("저장됨");
+          });
+        });
+        rowEl.querySelector("[data-del]").addEventListener("click", async () => {
+          if (!confirm("이 항목을 삭제할까요?")) return;
+          await STORE.remove(T, id);
+          UI.toast("삭제됨");
+          await load();
+        });
+      });
+    }
+
+    function refreshSummary() {
+      const spent = items.reduce((s, i) => s + Number(i.amount || 0), 0);
+      const remain = total - spent;
+      const rate = total ? Math.round((spent / total) * 100) : 0;
+      document.getElementById("summary").innerHTML = [
+        { n: D.won(total), c: `총 예산 (${D.man(total)})`, coral: false },
+        { n: D.won(spent), c: `총 지출 (${items.length}개 항목)`, coral: false },
+        { n: D.won(remain), c: `남은 예산 (${D.man(remain)})`, coral: true },
+      ].map(s => `<div class="stat"><div class="num ${s.coral?"coral":""}" style="font-size:1.5rem">${s.n}</div><div class="cap">${s.c}</div></div>`).join("");
+      document.getElementById("rate").textContent = rate + "%";
+      document.getElementById("total-bar").style.width = Math.min(rate, 100) + "%";
+      document.getElementById("spent-lbl").textContent = "지출 " + D.won(spent);
+      document.getElementById("remain-lbl").textContent = "잔액 " + D.won(remain);
+    }
+
+    /* 총 예산 저장 */
+    document.getElementById("total-save").addEventListener("click", async () => {
+      const v = Number(String(document.getElementById("total-input").value).replace(/[^\d.-]/g, "")) || 0;
+      total = v;
+      await STORE.setSetting("budget_total", v);
+      UI.toast("총 예산 저장됨");
+      render();
+    });
+
+    document.getElementById("btn-edit").addEventListener("click", e => {
+      editMode = !editMode;
+      e.target.classList.toggle("btn-primary", editMode);
+      e.target.textContent = editMode ? "✓ 편집 끝내기" : "✏️ 편집 모드";
+      render();
+    });
+
+    const addForm = document.getElementById("add-form");
+    document.getElementById("btn-add").addEventListener("click", () => addForm.classList.toggle("hidden"));
+    document.getElementById("f-cancel").addEventListener("click", () => addForm.classList.add("hidden"));
+    document.getElementById("f-save").addEventListener("click", async () => {
+      const name = document.getElementById("f-name").value.trim();
+      if (!name) { alert("항목명을 입력하세요."); return; }
+      const obj = {
+        name,
+        vendor: document.getElementById("f-vendor").value.trim(),
+        detail: document.getElementById("f-detail").value.trim(),
+        amount: Number(String(document.getElementById("f-amount").value).replace(/[^\d.-]/g, "")) || 0,
+        cat: document.getElementById("f-cat").value.trim() || "기타",
+      };
+      await STORE.add(T, obj);
+      ["f-name","f-vendor","f-detail","f-amount","f-cat"].forEach(id => document.getElementById(id).value = "");
+      addForm.classList.add("hidden");
+      UI.toast("추가됨");
+      await load();
+    });
+
+    load();
+  </script>
+</body>
+</html>

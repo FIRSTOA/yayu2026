@@ -1,0 +1,11 @@
+# 엑셀 원본(개인정보 포함) — 배포 저장소에 올리지 않음
+26년_야유회_모음.xlsx
+*.xlsx
+
+# 백업/임시
+야유회_백업.json
+.DS_Store
+Thumbs.db
+node_modules/
+
+����ȸ_���.json

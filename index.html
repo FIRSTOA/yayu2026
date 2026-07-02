@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>2026 퍼스트전산 여름 야유회 · 홈</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="wave">🌊</span> 퍼스트전산 여름 야유회</a>
+      <div class="nav-links">
+        <a href="index.html" class="active">홈</a>
+        <a href="schedule.html">일정표</a>
+        <a href="attendees.html">참석자</a>
+        <a href="budget.html">예산</a>
+        <a href="checklist.html">준비물</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="hero fade-up">
+      <div class="eyebrow">2026 SUMMER MT · 강원 춘천</div>
+      <h1 id="hero-title"></h1>
+      <div class="sub" id="hero-sub"></div>
+      <div class="hero-facts" id="hero-facts"></div>
+    </section>
+
+    <div class="grid cols-5" style="margin-top:20px" id="stat-row"></div>
+
+    <h2 class="section-title"><span class="dot"></span> 바로가기</h2>
+    <div class="grid cols-2" id="menu-grid"></div>
+
+    <h2 class="section-title"><span class="dot"></span> 데이터 관리</h2>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span id="mode"></span>
+        <button class="btn" id="btn-export">⬇️ 백업 내보내기(JSON)</button>
+        <label class="btn" style="cursor:pointer">⬆️ 백업 불러오기
+          <input type="file" id="file-import" accept="application/json" class="hidden" />
+        </label>
+        <button class="btn btn-danger" id="btn-reset">↩️ 엑셀 원본으로 초기화</button>
+      </div>
+      <p class="cap" style="margin:12px 0 0">
+        수정한 내용은 <strong id="mode-desc"></strong> 저장됩니다.
+        여러 사람과 실시간 공유하려면 Supabase 연결(<code>js/config.js</code>) 후 사용하세요.
+      </p>
+    </div>
+
+    <p class="foot" id="foot"></p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    const D = window.YAYU, e = D.event;
+
+    document.getElementById("hero-title").textContent = e.title;
+    document.getElementById("hero-sub").textContent =
+      `${e.dateLabel} · ${e.nights} · ${e.vendor}`;
+    document.getElementById("mode").innerHTML = UI.modePill();
+    document.getElementById("mode-desc").textContent =
+      STORE.mode === "cloud" ? "클라우드(Supabase)에" : "이 브라우저에";
+
+    const menu = [
+      { href: "schedule.html", ic: "🗓️", title: "일정표", desc: "토·일 1박 2일 타임테이블과 비상연락망" },
+      { href: "attendees.html", ic: "🧑‍🤝‍🧑", title: "참석자", desc: "부서별 인원 · 버스 승차 · 따로 합류 현황" },
+      { href: "budget.html", ic: "💰", title: "예산", desc: "총 예산 대비 항목별 지출과 잔액" },
+      { href: "checklist.html", ic: "🛒", title: "회사 준비물", desc: "회사에서 직접 챙길 물품 (소주·맥주·음료수 등)" },
+    ];
+    document.getElementById("menu-grid").innerHTML = menu.map(m => `
+      <a class="menu-card" href="${m.href}">
+        <div class="ic">${m.ic}</div>
+        <h3>${m.title}</h3>
+        <p>${m.desc}</p>
+        <div class="go">바로가기 →</div>
+      </a>`).join("");
+
+    document.getElementById("foot").textContent =
+      `데이터 출처: 26년_야유회_모음.xlsx · 작성일 ${e.writtenOn}`;
+
+    async function refresh() {
+      const [attAll, items] = await Promise.all([STORE.list("attendees"), STORE.list("budget_items")]);
+      const att = attAll.filter(a => a.attend !== false);   // 참석자만
+      const absent = attAll.length - att.length;
+      const total = Number(await STORE.getSetting("budget_total", D.budget.total));
+      const bus = att.filter(a => a.bus).length;
+      const spent = items.reduce((s, i) => s + Number(i.amount || 0), 0);
+
+      document.getElementById("hero-facts").innerHTML = [
+        { label: "일시", value: e.dateLabel },
+        { label: "장소", value: e.place },
+        { label: "인원", value: `${att.length}명 참석` },
+        { label: "제공", value: e.perks.join(" · ") },
+      ].map(f => `<div class="hero-fact"><div class="label">${f.label}</div><div class="value">${f.value}</div></div>`).join("");
+
+      document.getElementById("stat-row").innerHTML = [
+        { num: att.length, cap: "참석 인원", coral: false, href: "attendees.html?view=attend" },
+        { num: absent, cap: "미참석 인원", coral: true, href: "attendees.html?view=absent" },
+        { num: bus, cap: "버스 승차", coral: false, href: "attendees.html?view=bus" },
+        { num: att.length - bus, cap: "따로 합류", coral: true, href: "attendees.html?view=sep" },
+        { num: `${D.man(total - spent)}`, cap: "남은 예산", coral: false, money: true, href: "budget.html" },
+      ].map(s => `<a class="stat clickable" href="${s.href}" style="display:block">
+        <div class="num ${s.coral?"coral":""}">${s.num}${s.money ? "" : '<span style="font-size:1rem">명</span>'}</div>
+        <div class="cap">${s.cap} <span style="opacity:.6">›</span></div>
+      </a>`).join("");
+    }
+
+    /* 백업/복원/초기화 */
+    document.getElementById("btn-export").addEventListener("click", async () => {
+      const dump = await STORE.exportAll();
+      const blob = new Blob([JSON.stringify(dump, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "야유회_백업.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      UI.toast("백업 파일을 내려받았어요");
+    });
+    document.getElementById("file-import").addEventListener("change", async (ev) => {
+      const file = ev.target.files[0]; if (!file) return;
+      const text = await file.text();
+      try {
+        const dump = JSON.parse(text);
+        if (STORE.mode === "cloud") { alert("클라우드 모드에서는 불러오기가 지원되지 않습니다. 로컬 모드에서 사용하세요."); return; }
+        STORE.importAllLocal(dump);
+        UI.toast("백업을 불러왔어요");
+        refresh();
+      } catch (err) { alert("올바른 백업 파일이 아닙니다."); }
+    });
+    document.getElementById("btn-reset").addEventListener("click", async () => {
+      if (STORE.mode === "cloud") { alert("클라우드 모드에서는 이 버튼이 동작하지 않습니다."); return; }
+      if (!confirm("모든 수정 내용을 지우고 엑셀 원본값으로 되돌릴까요?")) return;
+      await STORE.resetLocal();
+      UI.toast("원본으로 초기화했어요");
+      refresh();
+    });
+
+    refresh();
+  </script>
+</body>
+</html>

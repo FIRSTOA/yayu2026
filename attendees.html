@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>참석자 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="wave">🌊</span> 퍼스트전산 여름 야유회</a>
+      <div class="nav-links">
+        <a href="index.html">홈</a>
+        <a href="schedule.html">일정표</a>
+        <a href="attendees.html" class="active">참석자</a>
+        <a href="budget.html">예산</a>
+        <a href="checklist.html">준비물</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-head fade-up" style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1>🧑‍🤝‍🧑 참석자</h1>
+        <p>참석·미참석 분류 · 부서·직급·버스 현황 · 위 타일을 눌러 분류별로 보기</p>
+      </div>
+      <span id="mode"></span>
+    </div>
+
+    <!-- 요약 통계 -->
+    <div class="grid cols-4" id="summary"></div>
+
+    <!-- 부서별 인원 -->
+    <h2 class="section-title"><span class="dot"></span> 부서별 인원</h2>
+    <div class="grid cols-4" id="dept-cards"></div>
+
+    <!-- 명단 -->
+    <h2 class="section-title"><span class="dot"></span> 참석자 명단</h2>
+
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-add">＋ 참석자 추가</button>
+      <button class="btn" id="btn-hr" style="display:none">👥 인사DB에서 불러오기</button>
+      <button class="btn" id="btn-edit">✏️ 편집 모드</button>
+    </div>
+
+    <!-- 인사DB 불러오기 패널 -->
+    <div class="card hidden" id="hr-panel" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <strong>👥 인사DB에서 참석자 추가</strong>
+        <span class="cap" id="hr-count"></span>
+      </div>
+      <input class="search" id="hr-search" placeholder="🔍 이름 · 부서 · 직함 검색" style="margin-bottom:12px" />
+      <div class="picker" id="hr-list"></div>
+      <p class="cap" style="margin:10px 0 0">읽기 전용 인사DB에서 <strong>이름·부서·직함·사진</strong>만 불러옵니다 · 버스/특이사항은 추가 후 편집하세요.</p>
+    </div>
+
+    <!-- 추가 폼 -->
+    <div class="add-form hidden" id="add-form">
+      <div class="row">
+        <input class="inp" id="f-name" placeholder="이름" />
+        <input class="inp" id="f-dept" list="deptlist" placeholder="부서" />
+        <input class="inp" id="f-rank" list="ranklist" placeholder="직급" />
+        <select class="sel" id="f-status">
+          <option value="bus">🚌 버스 승차</option>
+          <option value="sep">⚠️ 따로 합류</option>
+          <option value="absent">❌ 미참석</option>
+        </select>
+        <input class="inp" id="f-note" placeholder="특이사항(선택)" />
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="f-save">추가</button>
+        <button class="btn" id="f-cancel">취소</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div id="filters" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+    </div>
+    <div class="toolbar">
+      <input id="search" class="search" type="search" placeholder="🔍 이름 · 부서 · 직급 검색" />
+      <span id="count" class="badge badge-teal"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>이름</th><th>부서</th><th>직급</th><th>버스</th><th>특이사항</th><th class="edit-col hidden edit-only">삭제</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <p class="foot">🚌 버스 = 전세버스 승차 · ⚠️ 따로 합류 = 별도 이동</p>
+  </main>
+
+  <datalist id="deptlist"></datalist>
+  <datalist id="ranklist">
+    <option>대표</option><option>실장</option><option>이사</option><option>팀장</option>
+    <option>파트장</option><option>부파트장</option><option>프로</option>
+  </datalist>
+
+  <!-- Supabase (클라우드 모드일 때만 사용) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/hr.js"></script>
+  <script>
+    const D = window.YAYU, T = "attendees";
+    let rows = [], dept = "전체", q = "", editMode = false, view = "attend"; // attend | absent | bus | sep
+
+    const isAttend = a => a.attend !== false;
+
+    document.getElementById("mode").innerHTML = UI.modePill();
+
+    // 부서 datalist
+    document.getElementById("deptlist").innerHTML =
+      D.deptOrder.map(d => `<option>${UI.esc(d)}</option>`).join("");
+
+    function deptList() {
+      const set = [];
+      rows.forEach(r => { if (r.dept && !set.includes(r.dept)) set.push(r.dept); });
+      // data.js 기본 부서 순서를 우선 유지
+      const ordered = D.deptOrder.filter(d => set.includes(d));
+      set.forEach(d => { if (!ordered.includes(d)) ordered.push(d); });
+      return ordered;
+    }
+
+    async function load() {
+      rows = await STORE.list(T);
+      drawSummary(); drawDeptCards(); drawFilters(); render();
+    }
+
+    function drawSummary() {
+      const att = rows.filter(isAttend);
+      const bus = att.filter(a => a.bus).length;
+      const tiles = [
+        { n: att.length, c: "참석 인원", coral: false, f: "attend" },
+        { n: rows.length - att.length, c: "미참석 인원", coral: true, f: "absent" },
+        { n: bus, c: "버스 승차", coral: false, f: "bus" },
+        { n: att.length - bus, c: "따로 합류", coral: true, f: "sep" },
+      ];
+      document.getElementById("summary").innerHTML = tiles.map(s => {
+        const active = view === s.f ? "active" : "";
+        return `<div class="stat clickable ${active}" data-f="${s.f}">
+          <div class="num ${s.coral?"coral":""}">${s.n}<span style="font-size:1rem">명</span></div>
+          <div class="cap">${s.c} <span style="opacity:.6">›</span></div>
+        </div>`;
+      }).join("");
+    }
+
+    // 요약 타일 클릭 → 해당 인원만 보기 (부서 필터와 함께 적용)
+    document.getElementById("summary").addEventListener("click", e => {
+      const tile = e.target.closest(".stat.clickable"); if (!tile) return;
+      view = tile.dataset.f;
+      drawSummary();
+      render();
+      document.querySelector(".table-wrap").scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    function drawDeptCards() {
+      document.getElementById("dept-cards").innerHTML = deptList().map(dp => {
+        const inDept = rows.filter(a => a.dept === dp);
+        const att = inDept.filter(isAttend);
+        const b = att.filter(a => a.bus).length;
+        const absent = inDept.length - att.length;
+        return `<div class="stat">
+          <div style="font-weight:800">${UI.esc(dp)}</div>
+          <div class="num" style="font-size:1.6rem">${att.length}<span style="font-size:.9rem">명 참석</span></div>
+          <div class="cap">🚌 ${b} · ⚠️ ${att.length - b}${absent ? ` · ❌ 미참석 ${absent}` : ""}</div>
+        </div>`;
+      }).join("");
+    }
+
+    function drawFilters() {
+      const depts = ["전체", ...deptList()];
+      const el = document.getElementById("filters");
+      el.innerHTML = depts.map(dp =>
+        `<button class="chip ${dp===dept?"active":""}" data-d="${UI.esc(dp)}">${UI.esc(dp)}</button>`).join("");
+    }
+
+    function render() {
+      const list = rows.filter(a => {
+        const okD = dept === "전체" || a.dept === dept;
+        const okQ = !q || [a.name, a.dept, a.rank].join(" ").includes(q);
+        let okV;
+        if (view === "attend") okV = isAttend(a);
+        else if (view === "absent") okV = !isAttend(a);
+        else if (view === "bus") okV = isAttend(a) && a.bus;
+        else okV = isAttend(a) && !a.bus;   // sep
+        return okD && okQ && okV;
+      });
+      document.getElementById("count").textContent = `${list.length}명`;
+      document.querySelectorAll(".edit-only").forEach(e => e.classList.toggle("hidden", !editMode));
+
+      const tbody = document.getElementById("rows");
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted)">결과가 없습니다.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(a => editMode ? editRow(a) : viewRow(a)).join("");
+      if (editMode) bindRowEvents();
+    }
+
+    function avatarHtml(name, photo, size) {
+      const s = size || 30;
+      const init = UI.esc((name || "?").slice(0, 1));
+      let html = `<span class="avatar-fallback" style="width:${s}px;height:${s}px;padding:0;position:relative;overflow:hidden">${init}`;
+      if (photo) html += `<img src="${HR.photoUrl(photo)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()" />`;
+      return html + `</span>`;
+    }
+    function statusBadge(a) {
+      if (!isAttend(a)) return '<span class="badge badge-muted">❌ 미참석</span>';
+      return a.bus ? '<span class="badge badge-teal">🚌 승차</span>' : '<span class="badge badge-coral">⚠️ 따로 합류</span>';
+    }
+    function statusOf(a) { return !isAttend(a) ? "absent" : (a.bus ? "bus" : "sep"); }
+
+    function viewRow(a) {
+      return `<tr${isAttend(a) ? "" : ' style="opacity:.62"'}>
+        <td>${avatarHtml(a.name, a.photo, 30)}<strong>${UI.esc(a.name)}</strong></td>
+        <td>${UI.esc(a.dept)}</td>
+        <td>${UI.esc(a.rank)}</td>
+        <td>${statusBadge(a)}</td>
+        <td>${a.note ? UI.esc(a.note) : "-"}</td>
+      </tr>`;
+    }
+    function editRow(a) {
+      const st = statusOf(a);
+      return `<tr data-id="${a.id}">
+        <td><input class="inp" data-f="name" value="${UI.esc(a.name)}" /></td>
+        <td><input class="inp" data-f="dept" list="deptlist" value="${UI.esc(a.dept)}" /></td>
+        <td><input class="inp" data-f="rank" list="ranklist" value="${UI.esc(a.rank)}" /></td>
+        <td><select class="sel" data-f="status">
+          <option value="bus" ${st==="bus"?"selected":""}>🚌 승차</option>
+          <option value="sep" ${st==="sep"?"selected":""}>⚠️ 따로 합류</option>
+          <option value="absent" ${st==="absent"?"selected":""}>❌ 미참석</option>
+        </select></td>
+        <td><input class="inp" data-f="note" value="${UI.esc(a.note||"")}" /></td>
+        <td class="edit-col"><button class="btn btn-icon btn-danger" data-del="${a.id}">🗑</button></td>
+      </tr>`;
+    }
+
+    function bindRowEvents() {
+      document.querySelectorAll('#rows tr[data-id]').forEach(tr => {
+        const id = tr.dataset.id;
+        tr.querySelectorAll("[data-f]").forEach(inp => {
+          inp.addEventListener("change", async () => {
+            let patch;
+            if (inp.dataset.f === "status") {
+              // 승차/따로합류/미참석 → attend + bus 로 변환
+              const v = inp.value;
+              patch = { attend: v !== "absent", bus: v === "bus" };
+            } else {
+              patch = { [inp.dataset.f]: inp.value };
+            }
+            await STORE.update(T, id, patch);
+            const r = rows.find(x => x.id === id); if (r) Object.assign(r, patch);
+            drawSummary(); drawDeptCards(); drawFilters();
+            if (inp.dataset.f === "status") render(); // 참석/미참석 뷰 반영
+            UI.toast("저장됨");
+          });
+        });
+        tr.querySelector("[data-del]").addEventListener("click", async () => {
+          if (!confirm("이 참석자를 삭제할까요?")) return;
+          await STORE.remove(T, id);
+          UI.toast("삭제됨");
+          await load();
+        });
+      });
+    }
+
+    /* 필터 / 검색 / 편집 토글 */
+    document.getElementById("filters").addEventListener("click", e => {
+      const b = e.target.closest(".chip"); if (!b) return;
+      dept = b.dataset.d;              // 부서 필터는 현재 참석/미참석 뷰와 함께 적용
+      document.querySelectorAll("#filters .chip").forEach(c => c.classList.toggle("active", c === b));
+      render();
+    });
+    document.getElementById("search").addEventListener("input", e => { q = e.target.value.trim(); render(); });
+    document.getElementById("btn-edit").addEventListener("click", e => {
+      editMode = !editMode;
+      e.target.classList.toggle("btn-primary", editMode);
+      e.target.textContent = editMode ? "✓ 편집 끝내기" : "✏️ 편집 모드";
+      render();
+    });
+
+    /* 추가 폼 */
+    const addForm = document.getElementById("add-form");
+    document.getElementById("btn-add").addEventListener("click", () => addForm.classList.toggle("hidden"));
+    document.getElementById("f-cancel").addEventListener("click", () => addForm.classList.add("hidden"));
+    document.getElementById("f-save").addEventListener("click", async () => {
+      const name = document.getElementById("f-name").value.trim();
+      if (!name) { alert("이름을 입력하세요."); return; }
+      const st = document.getElementById("f-status").value;
+      const obj = {
+        name,
+        dept: document.getElementById("f-dept").value.trim() || "기타",
+        rank: document.getElementById("f-rank").value.trim() || "프로",
+        attend: st !== "absent",
+        bus: st === "bus",
+        note: document.getElementById("f-note").value.trim(),
+      };
+      await STORE.add(T, obj);
+      ["f-name","f-dept","f-rank","f-note"].forEach(id => document.getElementById(id).value = "");
+      addForm.classList.add("hidden");
+      UI.toast("추가됨");
+      await load();
+    });
+
+    /* ---------- 인사DB에서 불러오기 ---------- */
+    let hrEmployees = null, hrLoaded = false;
+    const hrPanel = document.getElementById("hr-panel");
+    const btnHr = document.getElementById("btn-hr");
+
+    if (HR.enabled) {
+      btnHr.style.display = "";
+      btnHr.addEventListener("click", async () => {
+        hrPanel.classList.toggle("hidden");
+        if (!hrPanel.classList.contains("hidden") && !hrLoaded) await loadHR();
+      });
+      document.getElementById("hr-search").addEventListener("input", renderHR);
+    }
+
+    async function loadHR() {
+      const listEl = document.getElementById("hr-list");
+      listEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted)">불러오는 중…</div>';
+      hrEmployees = await HR.listActive();
+      hrLoaded = true;
+      if (!hrEmployees.length) {
+        listEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--coral-deep)">인사DB에서 불러오지 못했습니다. 잠시 후 다시 시도하세요.</div>';
+        return;
+      }
+      renderHR();
+    }
+
+    function renderHR() {
+      if (!hrEmployees) return;
+      const q = (document.getElementById("hr-search").value || "").trim();
+      const existing = new Set(rows.map(r => r.name));
+      const list = hrEmployees.filter(e =>
+        !q || [e.name, e.department, e.display_title, e.position].join(" ").includes(q)
+      );
+      document.getElementById("hr-count").textContent = `재직자 ${hrEmployees.length}명`;
+      const listEl = document.getElementById("hr-list");
+      if (!list.length) { listEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted)">결과가 없습니다.</div>'; return; }
+      listEl.innerHTML = list.map((e, i) => {
+        const added = existing.has(e.name);
+        return `<div class="pick-row ${added ? "added" : ""}">
+          ${avatarHtml(e.name, e.photo_filename, 38)}
+          <div class="who">
+            <div class="nm">${UI.esc(e.name)}</div>
+            <div class="meta">${UI.esc(e.display_title || e.position || "")}${e.department ? " · " + UI.esc(e.department) : ""}</div>
+          </div>
+          ${added
+            ? '<span class="badge badge-muted">추가됨</span>'
+            : `<button class="btn btn-icon btn-primary" data-add="${i}" style="padding:6px 12px">＋ 추가</button>`}
+        </div>`;
+      }).join("");
+      listEl.querySelectorAll("[data-add]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const e = list[Number(btn.dataset.add)];
+          await STORE.add(T, {
+            name: e.name,
+            dept: e.department || "기타",
+            rank: e.position || "프로",
+            attend: true,
+            bus: true,
+            note: "",
+            photo: e.photo_filename || "",
+          });
+          UI.toast(`${e.name} 추가됨`);
+          await load();   // 요약/부서/명단 갱신
+          renderHR();     // '추가됨' 표시 반영
+        });
+      });
+    }
+
+    // 홈 화면 타일에서 넘어온 경우: ?view=attend|absent|bus|sep 적용
+    const _v = new URLSearchParams(location.search).get("view");
+    if (["attend", "absent", "bus", "sep"].includes(_v)) view = _v;
+
+    load().then(() => {
+      if (_v) document.querySelector(".table-wrap").scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  </script>
+</body>
+</html>

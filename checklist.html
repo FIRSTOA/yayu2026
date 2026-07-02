@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>회사 준비물 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="wave">🌊</span> 퍼스트전산 여름 야유회</a>
+      <div class="nav-links">
+        <a href="index.html">홈</a>
+        <a href="schedule.html">일정표</a>
+        <a href="attendees.html">참석자</a>
+        <a href="budget.html">예산</a>
+        <a href="checklist.html" class="active">준비물</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-head fade-up" style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1>🛒 회사 준비물</h1>
+        <p>퍼스트전산에서 <strong>직접 챙겨 갈 물품</strong> 체크리스트 · 자유롭게 추가/수정/삭제하세요<br>
+           <span class="cap">개인 준비물(여벌 옷·세면도구 등)은 <a href="schedule.html" style="color:var(--teal-deep);font-weight:700">일정표</a> 포스터를 참고하세요 · <span id="progress"></span></span></p>
+      </div>
+      <span id="mode"></span>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-add">＋ 물품 추가</button>
+      <button class="btn" id="btn-edit">✏️ 편집 모드</button>
+    </div>
+
+    <div class="add-form hidden" id="add-form">
+      <div class="row">
+        <input class="inp" id="f-name" placeholder="물품 이름 (예: 소주, 맥주, 음료수)" />
+        <input class="inp" id="f-qty" placeholder="수량 (예: 20병, 30캔, 5박스)" />
+        <input class="inp" id="f-detail" placeholder="메모(선택) — 종류 등" />
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="f-save">추가</button>
+        <button class="btn" id="f-cancel">취소</button>
+      </div>
+    </div>
+
+    <div class="card" id="list-card">
+      <div id="list"></div>
+      <div class="note-line" id="note"></div>
+    </div>
+
+    <p class="foot">체크 표시는 내 브라우저에만 저장돼요 · 물품 목록은 함께 관리됩니다</p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    const T = "checklist_items";
+    const CHECK_KEY = "yayu:check:2026";
+    // 그룹은 현재 하나(회사 준비물). 첫 번째 그룹을 기본으로 사용.
+    const GRP = Object.keys(STORE.checklistMeta)[0] || "company";
+    const META = STORE.checklistMeta[GRP] || { title: "회사 준비물", note: "" };
+
+    let items = [], editMode = false;
+    let checks = JSON.parse(localStorage.getItem(CHECK_KEY) || "{}");
+
+    document.getElementById("mode").innerHTML = UI.modePill();
+    document.getElementById("note").textContent = "💡 " + META.note;
+
+    async function load() {
+      items = (await STORE.list(T)).filter(i => i.grp === GRP);
+      render();
+    }
+
+    function render() {
+      const listEl = document.getElementById("list");
+      if (!items.length) {
+        listEl.innerHTML = '<div class="cap" style="padding:8px 0">아직 물품이 없어요. “＋ 물품 추가”로 넣어보세요.</div>';
+      } else {
+        listEl.innerHTML = items.map(it => editMode ? editItem(it) : viewItem(it)).join("");
+      }
+      if (editMode) bindEdit(); else bindCheck();
+      updateProgress();
+    }
+
+    function viewItem(it) {
+      const done = checks[it.id] ? "done" : "";
+      return `<div class="check-item ${done}" data-id="${it.id}">
+        <div class="check-box">✓</div>
+        <div style="flex:1">
+          <div class="c-name">${UI.esc(it.name)}${it.qty ? `<span class="badge badge-teal" style="font-size:1rem;margin-left:10px;vertical-align:middle">${UI.esc(it.qty)}</span>` : ""}</div>
+          ${it.detail ? `<div class="c-detail">${UI.esc(it.detail)}</div>` : ""}
+        </div>
+      </div>`;
+    }
+    function editItem(it) {
+      return `<div class="check-item" data-id="${it.id}" style="cursor:default">
+        <div style="flex:1;display:grid;gap:8px;grid-template-columns:1.2fr 0.9fr 1.2fr">
+          <input class="inp" data-f="name" value="${UI.esc(it.name)}" placeholder="물품 이름" />
+          <input class="inp" data-f="qty" value="${UI.esc(it.qty||"")}" placeholder="수량 (예: 20병)" />
+          <input class="inp" data-f="detail" value="${UI.esc(it.detail||"")}" placeholder="메모(종류)" />
+        </div>
+        <button class="btn btn-icon btn-danger" data-del="${it.id}">🗑</button>
+      </div>`;
+    }
+
+    function bindCheck() {
+      document.querySelectorAll('#list .check-item[data-id]').forEach(el => {
+        el.addEventListener("click", () => {
+          const id = el.dataset.id;
+          checks[id] = !checks[id];
+          if (!checks[id]) delete checks[id];
+          localStorage.setItem(CHECK_KEY, JSON.stringify(checks));
+          el.classList.toggle("done");
+          updateProgress();
+        });
+      });
+    }
+    function bindEdit() {
+      document.querySelectorAll('#list .check-item[data-id]').forEach(el => {
+        const id = el.dataset.id;
+        el.querySelectorAll("[data-f]").forEach(inp => {
+          inp.addEventListener("change", async () => {
+            const patch = { [inp.dataset.f]: inp.value };
+            await STORE.update(T, id, patch);
+            const r = items.find(x => x.id === id); if (r) Object.assign(r, patch);
+            UI.toast("저장됨");
+          });
+        });
+        el.querySelector("[data-del]").addEventListener("click", async () => {
+          if (!confirm("이 물품을 삭제할까요?")) return;
+          await STORE.remove(T, id);
+          UI.toast("삭제됨");
+          await load();
+        });
+      });
+    }
+
+    function updateProgress() {
+      const total = items.length;
+      const done = items.filter(i => checks[i.id]).length;
+      document.getElementById("progress").textContent = `${done} / ${total} 준비 완료`;
+    }
+
+    document.getElementById("btn-edit").addEventListener("click", e => {
+      editMode = !editMode;
+      e.target.classList.toggle("btn-primary", editMode);
+      e.target.textContent = editMode ? "✓ 편집 끝내기" : "✏️ 편집 모드";
+      render();
+    });
+
+    const addForm = document.getElementById("add-form");
+    document.getElementById("btn-add").addEventListener("click", () => {
+      addForm.classList.toggle("hidden");
+      if (!addForm.classList.contains("hidden")) document.getElementById("f-name").focus();
+    });
+    document.getElementById("f-cancel").addEventListener("click", () => addForm.classList.add("hidden"));
+    async function saveNew() {
+      const name = document.getElementById("f-name").value.trim();
+      if (!name) { alert("물품 이름을 입력하세요."); return; }
+      await STORE.add(T, {
+        grp: GRP,
+        name,
+        qty: document.getElementById("f-qty").value.trim(),
+        detail: document.getElementById("f-detail").value.trim(),
+      });
+      document.getElementById("f-name").value = "";
+      document.getElementById("f-qty").value = "";
+      document.getElementById("f-detail").value = "";
+      UI.toast("추가됨");
+      await load();
+      document.getElementById("f-name").focus(); // 연속 추가 편의
+    }
+    document.getElementById("f-save").addEventListener("click", saveNew);
+    document.getElementById("add-form").addEventListener("keydown", e => {
+      if (e.key === "Enter") { e.preventDefault(); saveNew(); }
+    });
+
+    load();
+  </script>
+</body>
+</html>

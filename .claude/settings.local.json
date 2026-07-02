@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($src=\"c:\\\\Users\\\\X0002\\\\야유회 vs-code\\\\26년_야유회_모음.xlsx\"; $dst=\"C:\\\\Users\\\\X0002\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-X0002-----vs-code\\\\f6d59cea-2bef-47cb-b2f8-e2b417b4772c\\\\scratchpad\\\\xlsx\"; Remove-Item $dst -Recurse -Force -ErrorAction SilentlyContinue; Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory\\($src,$dst\\); Get-ChildItem -Recurse $dst | Select-Object FullName)"
+    ]
+  }
+}

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>일정표 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="wave">🌊</span> 퍼스트전산 여름 야유회</a>
+      <div class="nav-links">
+        <a href="index.html">홈</a>
+        <a href="schedule.html" class="active">일정표</a>
+        <a href="attendees.html">참석자</a>
+        <a href="budget.html">예산</a>
+        <a href="checklist.html">준비물</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-head fade-up" style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1>🗓️ 일정표</h1>
+        <p id="sub"></p>
+      </div>
+      <span id="mode"></span>
+    </div>
+
+    <!-- 직접 제작한 일정표 이미지 -->
+    <div class="card fade-up" style="padding:14px">
+      <img src="assets/일정표.png" alt="2026 퍼스트전산 여름 야유회 일정표"
+           style="width:100%;height:auto;display:block;border-radius:12px" />
+    </div>
+    <div class="toolbar" style="margin-top:14px">
+      <a class="btn" href="assets/일정표.png" target="_blank" rel="noopener">🔍 원본 크게 보기</a>
+      <a class="btn" href="assets/일정표.png" download="2026_퍼스트전산_야유회_일정표.png">⬇️ 이미지 저장</a>
+      <button class="btn" id="btn-toggle-editor">✏️ 텍스트 표로 편집</button>
+    </div>
+
+    <!-- 텍스트 표(편집용) — 기본 숨김 -->
+    <div id="editor" class="hidden">
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btn-add">＋ 일정 추가</button>
+      <button class="btn" id="btn-edit">✏️ 편집 모드</button>
+    </div>
+
+    <div class="add-form hidden" id="add-form">
+      <div class="row">
+        <input class="inp" id="f-day" list="daylist" placeholder="일자 (예: 8월 29일 (토))" />
+        <input class="inp" id="f-time" placeholder="시간 (예: 14:00~15:00)" />
+        <input class="inp" id="f-dur" placeholder="소요 (예: 1시간)" />
+        <input class="inp" id="f-act" placeholder="일정 내용" />
+        <input class="inp" id="f-note" placeholder="비고(선택)" />
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="f-save">추가</button>
+        <button class="btn" id="f-cancel">취소</button>
+      </div>
+    </div>
+
+    <div id="days"></div>
+
+    <h2 class="section-title"><span class="dot"></span> 비상연락망 (스탭)</h2>
+    <div class="grid cols-4" id="staff"></div>
+    </div><!-- /#editor -->
+
+    <p class="foot">상단 이미지는 직접 제작한 일정표입니다 · 아래 “텍스트 표로 편집”에서 내용을 수정할 수 있어요</p>
+  </main>
+
+  <datalist id="daylist"></datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    const D = window.YAYU, e = D.event, T = "schedule_items";
+    let rows = [], editMode = false;
+
+    document.getElementById("mode").innerHTML = UI.modePill();
+    document.getElementById("sub").textContent =
+      `${e.dateLabel} · ${e.nights} · ${e.vendor} (${e.place})`;
+
+    // 스탭은 참고용(고정)
+    document.getElementById("staff").innerHTML = D.staff.map(s => `
+      <div class="stat">
+        <div style="font-weight:800;font-size:1.05rem">${s.name}</div>
+        <div class="cap">${s.role}</div>
+        <a href="tel:${s.phone.replace(/-/g,"")}" style="color:var(--coral-deep);font-weight:700">${s.phone}</a>
+      </div>`).join("");
+
+    function dayOrder() {
+      const days = [];
+      rows.forEach(r => { if (!days.includes(r.day)) days.push(r.day); });
+      return days;
+    }
+
+    async function load() {
+      rows = await STORE.list(T);
+      document.getElementById("daylist").innerHTML =
+        dayOrder().map(d => `<option>${UI.esc(d)}</option>`).join("");
+      render();
+    }
+
+    function shortOf(day) {
+      const r = rows.find(x => x.day === day && x.short);
+      return r ? r.short : "";
+    }
+
+    function render() {
+      document.getElementById("days").innerHTML = dayOrder().map(day => {
+        const list = rows.filter(r => r.day === day);
+        return `<div class="card" style="margin-bottom:18px">
+          <div class="day-tab">${UI.esc(shortOf(day))} · ${UI.esc(day)}</div>
+          <div class="table-wrap" style="margin-top:14px">
+            <table>
+              <thead><tr>
+                <th style="width:150px">시간</th><th style="width:100px">소요</th><th>일정</th><th>비고</th>
+                ${editMode ? '<th class="edit-col">삭제</th>' : ''}
+              </tr></thead>
+              <tbody>
+                ${list.map(r => editMode ? editRow(r) : viewRow(r)).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+      }).join("");
+      if (editMode) bindEdit();
+    }
+
+    function viewRow(r) {
+      return `<tr>
+        <td class="t-time">${UI.esc(r.time)}</td>
+        <td class="t-dur">${UI.esc(r.dur)}</td>
+        <td><strong>${UI.esc(r.act)}</strong></td>
+        <td>${r.note ? `<span class="badge badge-coral">${UI.esc(r.note)}</span>` : ""}</td>
+      </tr>`;
+    }
+    function editRow(r) {
+      return `<tr data-id="${r.id}">
+        <td><input class="inp" data-f="time" value="${UI.esc(r.time)}" /></td>
+        <td><input class="inp" data-f="dur" value="${UI.esc(r.dur)}" /></td>
+        <td><input class="inp" data-f="act" value="${UI.esc(r.act)}" /></td>
+        <td><input class="inp" data-f="note" value="${UI.esc(r.note||"")}" /></td>
+        <td class="edit-col"><button class="btn btn-icon btn-danger" data-del="${r.id}">🗑</button></td>
+      </tr>`;
+    }
+
+    function bindEdit() {
+      document.querySelectorAll('#days tr[data-id]').forEach(tr => {
+        const id = tr.dataset.id;
+        tr.querySelectorAll("[data-f]").forEach(inp => {
+          inp.addEventListener("change", async () => {
+            const patch = { [inp.dataset.f]: inp.value };
+            await STORE.update(T, id, patch);
+            const r = rows.find(x => x.id === id); if (r) Object.assign(r, patch);
+            UI.toast("저장됨");
+          });
+        });
+        tr.querySelector("[data-del]").addEventListener("click", async () => {
+          if (!confirm("이 일정을 삭제할까요?")) return;
+          await STORE.remove(T, id);
+          UI.toast("삭제됨");
+          await load();
+        });
+      });
+    }
+
+    document.getElementById("btn-toggle-editor").addEventListener("click", ev => {
+      const ed = document.getElementById("editor");
+      const hidden = ed.classList.toggle("hidden");
+      ev.target.textContent = hidden ? "✏️ 텍스트 표로 편집" : "🖼️ 접기";
+      ev.target.classList.toggle("btn-primary", !hidden);
+    });
+
+    document.getElementById("btn-edit").addEventListener("click", ev => {
+      editMode = !editMode;
+      ev.target.classList.toggle("btn-primary", editMode);
+      ev.target.textContent = editMode ? "✓ 편집 끝내기" : "✏️ 편집 모드";
+      render();
+    });
+
+    const addForm = document.getElementById("add-form");
+    document.getElementById("btn-add").addEventListener("click", () => addForm.classList.toggle("hidden"));
+    document.getElementById("f-cancel").addEventListener("click", () => addForm.classList.add("hidden"));
+    document.getElementById("f-save").addEventListener("click", async () => {
+      const day = document.getElementById("f-day").value.trim();
+      const act = document.getElementById("f-act").value.trim();
+      if (!day || !act) { alert("일자와 일정 내용을 입력하세요."); return; }
+      const obj = {
+        day, short: shortOf(day) || day.replace(/[^0-9]/g, "").slice(0, 4) || "DAY",
+        time: document.getElementById("f-time").value.trim(),
+        dur: document.getElementById("f-dur").value.trim(),
+        act,
+        note: document.getElementById("f-note").value.trim(),
+      };
+      await STORE.add(T, obj);
+      ["f-time","f-dur","f-act","f-note"].forEach(id => document.getElementById(id).value = "");
+      addForm.classList.add("hidden");
+      UI.toast("추가됨");
+      await load();
+    });
+
+    load();
+  </script>
+</body>
+</html>
