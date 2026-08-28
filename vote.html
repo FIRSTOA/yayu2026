@@ -31,7 +31,9 @@
     .adm-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 10px; }
     .adm-top h1 { font-size: 1.5rem; margin: 0; color: var(--teal-deep); }
     .adm-total { color: var(--muted); font-weight: 800; margin: 0 0 16px; }
-    .res-row { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--line); margin-bottom: 8px; }
+    .res-row { display: grid; grid-template-columns: 40px 1fr auto 30px; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--line); margin-bottom: 8px; }
+    .res-del { border: none; background: transparent; color: inherit; opacity: 0.45; cursor: pointer; font-size: 1rem; font-weight: 800; padding: 4px; }
+    .res-del:hover { opacity: 1; color: #c0392b; }
     .res-row.t1 { background: linear-gradient(90deg, #F5C542, #E8A317); color: #16202B; border: 0; }
     .res-row.t2 { background: linear-gradient(90deg, #cbd4dc, #9fb0bd); color: #16202B; border: 0; }
     .res-row.t3 { background: linear-gradient(90deg, #dcae7e, #c0824a); color: #fff; border: 0; }
@@ -125,11 +127,12 @@
        ============================================================ */
     /* 기본 참가자 (신청자). 관리자가 즉석 추가하면 Supabase settings 에 저장되어 모든 폰에 반영됨. */
     const DEFAULTS = [
-      "권태혁 (댄스)",
-      "신정훈 (마술)",
+      { id: "p1", name: "권태혁 (댄스)" },
+      { id: "p2", name: "신정훈 (마술)" },
     ];
     const LIST_KEY = "talent_participants";
     let participants = DEFAULTS.slice();
+    const pid = () => "p_" + ((self.crypto && crypto.randomUUID) ? crypto.randomUUID().slice(0, 8) : (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)));
 
     /* ② 관리자 비밀번호 */
     const ADMIN_PW = "1943";
@@ -154,9 +157,9 @@
     /* ---------- 투표 화면 ---------- */
     const voted = () => !!localStorage.getItem(VOTE_KEY);
     function renderVoteButtons() {
-      $("vgrid").innerHTML = participants.map((n, i) =>
-        `<button class="vbtn" data-i="${i}" ${voted() ? "disabled" : ""}>${esc(n)}</button>`).join("");
-      $("vgrid").querySelectorAll("[data-i]").forEach(b => b.onclick = () => castVote(+b.dataset.i));
+      $("vgrid").innerHTML = participants.map(p =>
+        `<button class="vbtn" data-id="${esc(p.id)}" ${voted() ? "disabled" : ""}>${esc(p.name)}</button>`).join("");
+      $("vgrid").querySelectorAll("[data-id]").forEach(b => b.onclick = () => castVote(b.dataset.id));
       if (voted()) $("lock-banner").classList.add("show");
     }
     function lockVoting() {
@@ -164,37 +167,50 @@
       $("lock-banner").classList.add("show");
       $("vgrid").querySelectorAll("button").forEach(b => b.disabled = true);
     }
-    async function castVote(i) {
+    async function castVote(id) {
       if (voted()) { $("lock-banner").classList.add("show"); return; }
       if (!client) { alert("투표 시스템에 연결할 수 없어요. 잠시 후 다시 시도해 주세요."); return; }
-      const btn = $("vgrid").querySelector(`[data-i="${i}"]`);
+      const btn = $("vgrid").querySelector(`[data-id="${id}"]`);
       if (btn) btn.disabled = true;
-      const { error } = await client.from(SETTINGS).insert({ key: PREFIX + uid(), value: i });
+      const { error } = await client.from(SETTINGS).insert({ key: PREFIX + uid(), value: id });
       if (error) { alert("투표 전송 실패 — 네트워크를 확인하고 다시 시도해 주세요."); if (btn) btn.disabled = false; return; }
       lockVoting();
     }
 
     /* ---------- 참가자 명단 (Supabase settings 공유) ---------- */
+    // 옛 형식(문자열 배열) 호환 → {id,name} 으로 정규화
+    function normList(arr) { return arr.map((x, i) => (x && typeof x === "object") ? { id: x.id || ("p" + (i + 1)), name: x.name } : { id: "p" + (i + 1), name: String(x) }); }
     async function loadParticipants() {
       if (!client) return;
       const { data, error } = await client.from(SETTINGS).select("value").eq("key", LIST_KEY).maybeSingle();
-      participants = (!error && data && Array.isArray(data.value) && data.value.length) ? data.value : DEFAULTS.slice();
-      results = participants.map(n => ({ name: n, votes: 0 }));
+      participants = (!error && data && Array.isArray(data.value) && data.value.length) ? normList(data.value) : DEFAULTS.slice();
+      results = participants.map(p => ({ id: p.id, name: p.name, votes: 0 }));
       renderVoteButtons();
+    }
+    async function saveList(next) {
+      const { error } = await client.from(SETTINGS).upsert({ key: LIST_KEY, value: next });
+      if (error) { alert("저장 실패: " + error.message); return false; }
+      participants = next; return true;
     }
     async function addParticipant() {
       if (!client) return;
       const name = $("new-part").value.trim();
       if (!name) return;
-      if (participants.includes(name)) { alert("이미 있는 참가자예요."); return; }
-      const next = participants.concat([name]);
-      const { error } = await client.from(SETTINGS).upsert({ key: LIST_KEY, value: next });
-      if (error) { alert("추가 실패: " + error.message); return; }
-      participants = next;
+      if (participants.some(p => p.name === name)) { alert("이미 있는 참가자예요."); return; }
+      if (!await saveList(participants.concat([{ id: pid(), name }]))) return;
       $("new-part").value = "";
-      await fetchResults();     // 새 참가자 0표로 즉시 반영
-      renderResults();
-      renderVoteButtons();
+      await fetchResults(); renderResults(); renderVoteButtons();   // 새 참가자 0표로 즉시 반영
+    }
+    async function deleteParticipant(id) {
+      if (!client) return;
+      const p = participants.find(x => x.id === id); if (!p) return;
+      if (!confirm(`'${p.name}' 참가자를 삭제할까요?\n(이 참가자에게 들어온 표도 함께 삭제됩니다)`)) return;
+      // 해당 참가자의 투표 행을 key 기준으로 삭제(jsonb 비교 회피)
+      const { data } = await client.from(SETTINGS).select("key,value").like("key", PREFIX + "%");
+      const keys = (data || []).filter(r => String(r.value) === id).map(r => r.key);
+      if (keys.length) { const { error } = await client.from(SETTINGS).delete().in("key", keys); if (error) { alert("표 삭제 실패: " + error.message); return; } }
+      if (!await saveList(participants.filter(x => x.id !== id))) return;
+      await fetchResults(); renderResults(); renderVoteButtons();
     }
 
     /* ---------- 결과 집계 (settings 에서 talentvote:* 행 세기) ---------- */
@@ -203,8 +219,8 @@
       const { data, error } = await client.from(SETTINGS).select("value").like("key", PREFIX + "%");
       if (error) return { error };
       const counts = {};
-      (data || []).forEach(r => { const c = Number(r.value); if (!isNaN(c)) counts[c] = (counts[c] || 0) + 1; });
-      results = participants.map((name, i) => ({ name, votes: counts[i] || 0 }));
+      (data || []).forEach(r => { const c = String(r.value); counts[c] = (counts[c] || 0) + 1; });
+      results = participants.map(p => ({ id: p.id, name: p.name, votes: counts[p.id] || 0 }));
       if ($("admin-screen").classList.contains("show")) renderResults();
       return {};
     }
@@ -222,8 +238,10 @@
         const pct = Math.round((r.votes / max) * 100);
         return `<div class="res-row${tcls}"><span class="res-rank">${medal}</span>
           <div class="res-mid"><div class="res-name">${esc(r.name)}</div><div class="res-bar"><span style="width:${pct}%"></span></div></div>
-          <span class="res-votes">${r.votes}표</span></div>`;
+          <span class="res-votes">${r.votes}표</span>
+          <button class="res-del" data-del="${esc(r.id)}" title="참가자 삭제">✕</button></div>`;
       }).join("");
+      $("res-list").querySelectorAll("[data-del]").forEach(b => b.onclick = () => deleteParticipant(b.dataset.del));
     }
     async function openAdmin() {
       const pw = prompt("관리자 비밀번호를 입력하세요");
