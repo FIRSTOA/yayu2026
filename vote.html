@@ -126,12 +126,14 @@
     /* ② 관리자 비밀번호 */
     const ADMIN_PW = "1234";
 
-    /* 저장소: 이 앱이 이미 쓰는 Supabase(yayu-2026)를 그대로 재사용 (js/config.js).
-       투표는 talent_votes 테이블에 한 표당 한 줄 insert → 동시 투표에도 유실 없음.
-       ⚠️ 최초 1회 Supabase SQL 편집기에서 테이블/정책 생성 필요 (진행자 안내 참고).
+    /* 저장소: 이 앱이 이미 쓰는 Supabase(yayu-2026)의 기존 settings 테이블을 그대로 재사용 (js/config.js).
+       → 새 테이블/SQL 없이 바로 동작. 투표 1표 = settings 에 talentvote:<uuid> 키로 1줄 insert
+         (choice=참가자 인덱스). 동시 투표에도 유실 없음(행마다 별도 insert).
        기기별 1표 방지는 localStorage (시크릿모드 우회 가능하나 사내 행사용으론 충분). */
     const VOTE_KEY = "talent_voted_2026";
-    const TABLE = "talent_votes";
+    const SETTINGS = "settings";
+    const PREFIX = "talentvote:";
+    const uid = () => (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
 
     const $ = id => document.getElementById(id);
     const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -140,7 +142,6 @@
     const cfg = window.SUPABASE_CONFIG || {};
     const client = (window.supabase && cfg.url && cfg.key) ? window.supabase.createClient(cfg.url, cfg.key) : null;
     let results = PARTICIPANTS.map(n => ({ name: n, votes: 0 }));
-    let tableReady = false;
 
     /* ---------- 투표 화면 ---------- */
     const voted = () => !!localStorage.getItem(VOTE_KEY);
@@ -157,32 +158,28 @@
     }
     async function castVote(i) {
       if (voted()) { $("lock-banner").classList.add("show"); return; }
-      if (!client || !tableReady) { alert("아직 투표 준비 중이에요. 진행자에게 문의해 주세요."); return; }
+      if (!client) { alert("투표 시스템에 연결할 수 없어요. 잠시 후 다시 시도해 주세요."); return; }
       const btn = $("vgrid").querySelector(`[data-i="${i}"]`);
       if (btn) btn.disabled = true;
-      const { error } = await client.from(TABLE).insert({ choice: i });
+      const { error } = await client.from(SETTINGS).insert({ key: PREFIX + uid(), value: i });
       if (error) { alert("투표 전송 실패 — 네트워크를 확인하고 다시 시도해 주세요."); if (btn) btn.disabled = false; return; }
       lockVoting();
     }
 
-    /* ---------- 결과 집계 (실시간) ---------- */
+    /* ---------- 결과 집계 (settings 에서 talentvote:* 행 세기) ---------- */
     async function fetchResults() {
       if (!client) return { error: "no-client" };
-      const { data, error } = await client.from(TABLE).select("choice");
+      const { data, error } = await client.from(SETTINGS).select("value").like("key", PREFIX + "%");
       if (error) return { error };
       const counts = {};
-      (data || []).forEach(r => { counts[r.choice] = (counts[r.choice] || 0) + 1; });
+      (data || []).forEach(r => { const c = Number(r.value); if (!isNaN(c)) counts[c] = (counts[c] || 0) + 1; });
       results = PARTICIPANTS.map((name, i) => ({ name, votes: counts[i] || 0 }));
       if ($("admin-screen").classList.contains("show")) renderResults();
       return {};
     }
-    let refetchT = null;
-    function scheduleRefetch() { clearTimeout(refetchT); refetchT = setTimeout(fetchResults, 250); }
-    function subscribeRealtime() {
-      client.channel("talent_votes_rt")
-        .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, () => scheduleRefetch())
-        .subscribe();
-    }
+    let pollTimer = null;
+    function startPoll() { if (pollTimer) return; fetchResults(); pollTimer = setInterval(fetchResults, 2500); }
+    function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
     function renderResults() {
       const sorted = results.slice().sort((a, b) => b.votes - a.votes);
       const total = results.reduce((s, r) => s + r.votes, 0);
@@ -204,14 +201,15 @@
       $("vote-screen").style.display = "none";
       $("admin-screen").classList.add("show");
       const { error } = await fetchResults();
-      if (error) { $("res-list").innerHTML = '<p class="cap" style="color:var(--muted)">⚠️ 투표 테이블이 아직 없어요. Supabase에서 talent_votes 테이블을 만들어 주세요.</p>'; return; }
+      if (error) { $("res-list").innerHTML = '<p class="cap" style="color:var(--muted)">⚠️ 결과를 불러오지 못했어요. 네트워크 확인 후 다시 시도해 주세요.</p>'; return; }
       renderResults();
+      startPoll(); // 실시간 갱신(2.5초 폴링)
     }
-    function closeAdmin() { $("admin-screen").classList.remove("show"); $("vote-screen").style.display = "block"; }
+    function closeAdmin() { stopPoll(); $("admin-screen").classList.remove("show"); $("vote-screen").style.display = "block"; }
     async function resetVotes() {
       if (!client) return;
       if (!confirm("모든 투표를 0으로 초기화할까요? (되돌릴 수 없음)")) return;
-      const { error } = await client.from(TABLE).delete().gt("id", 0);
+      const { error } = await client.from(SETTINGS).delete().like("key", PREFIX + "%");
       if (error) { alert("초기화 실패: " + error.message); return; }
       fetchResults(); alert("초기화되었습니다.");
     }
@@ -316,9 +314,8 @@
     renderVoteButtons();
     (async function init() {
       if (!client) { $("cfg-warn").classList.add("show"); return; }
-      const { error } = await fetchResults();
-      if (error) { $("cfg-warn").classList.add("show"); }   // 테이블 아직 없음
-      else { tableReady = true; subscribeRealtime(); }
+      const { error } = await fetchResults(); // settings 테이블은 이미 존재 → 바로 동작
+      if (error) $("cfg-warn").classList.add("show"); // 연결 문제일 때만 안내
     })();
   </script>
 </body>
