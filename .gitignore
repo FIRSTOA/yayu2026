@@ -8,4 +8,16 @@
 Thumbs.db
 node_modules/
 
-����ȸ_���.json
+����ȸ_���.json
+
+.netlify-token
+
+.vercel-token
+.vercel/
+
+# Netlify 관련 (Vercel로 이전)
+.netlify/
+.netlify-token
+
+# 합본 원본 이미지 (웹에서 미사용, 잘라서 bunny1~4 사용)
+assets/토끼맥주.png

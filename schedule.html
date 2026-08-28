@@ -5,6 +5,101 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>일정표 · 2026 퍼스트전산 여름 야유회</title>
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .pbanner { width: 100%; height: auto; display: block; border-radius: 18px; box-shadow: var(--shadow); }
+    .pchips { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 4px; }
+    .pchip { background: var(--cream); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px; font-size: 0.9rem; box-shadow: var(--shadow); }
+    .pchip b { color: var(--ink); }
+    .pchip .lb { color: var(--muted); margin-right: 4px; }
+    .pgrid { display: grid; grid-template-columns: 1.42fr 1fr; gap: 16px; margin-top: 16px; align-items: start; }
+    @media (max-width: 860px) { .pgrid { grid-template-columns: 1fr; } }
+    .psec { background: var(--cream); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; margin-bottom: 16px; }
+    .phead { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 1.08rem; margin-bottom: 12px; }
+    .pnum { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 0.82rem; font-weight: 800; background: var(--coral); }
+    .pnum.teal { background: var(--teal); }
+    .subhead { font-weight: 800; color: var(--teal-deep); font-size: 0.92rem; margin-bottom: 6px; }
+    #capture { background: linear-gradient(160deg,#fffaf1,#f7efe1); padding: 22px; border-radius: 20px; }
+
+    /* 일정표 (flex 방식 — rowspan 없이 날짜 바가 한 줄로 이어짐) */
+    .sched-box { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .s-head, .s-row { display: flex; align-items: stretch; }
+    .s-head > div, .s-row > div { padding: 9px 10px; font-size: 0.86rem; display: flex; align-items: center; min-width: 0; }
+    .s-head > div { background: var(--teal-wash); color: var(--teal-deep); font-weight: 700; font-size: 0.8rem; }
+    .col-day { flex: 0 0 58px; justify-content: center; text-align: center; }
+    .col-time { flex: 0 0 106px; }
+    .col-dur { flex: 0 0 78px; }
+    .col-act { flex: 1; min-width: 0; }
+    .col-note { flex: 0 0 156px; }
+    .s-head > div, .s-row > div { padding: 8px 9px; }
+    .s-row > div { word-break: keep-all; }        /* 겹침 방지: 넘치면 단어 단위 줄바꿈 */
+    .s-row .col-time { font-weight: 700; color: var(--teal-deep); white-space: nowrap; }
+    .s-row .col-dur { color: var(--muted); font-size: 0.76rem; line-height: 1.25; }
+    .s-row .col-act { font-weight: 700; line-height: 1.3; }
+    .s-row .col-note { color: var(--muted); font-size: 0.77rem; line-height: 1.3; }
+    .s-row + .s-row { border-top: 1px solid var(--line); }
+    .s-day { display: flex; align-items: stretch; border-top: 1px solid var(--line); }
+    .daybar { flex: 0 0 58px; background: #12a2b3; color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.85rem; line-height: 1.4; }
+    .s-rows { flex: 1; min-width: 0; }
+    .footbar { background: var(--coral-wash); color: var(--coral-deep); font-weight: 700; text-align: center; padding: 11px; font-size: 0.9rem; }
+
+    /* 비상연락망 */
+    .staff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 480px) { .staff-grid { grid-template-columns: 1fr; } }
+    .staff-card { display: flex; align-items: center; gap: 10px; background: var(--teal-wash); border-radius: 12px; padding: 10px 12px; }
+    .staff-ini { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; background: var(--teal); color: #fff; font-weight: 800; display: grid; place-items: center; }
+    .staff-card .nm { font-weight: 800; font-size: 0.95rem; }
+    .staff-card .ph { color: var(--coral-deep); font-weight: 700; font-size: 0.84rem; }
+
+    /* 준비물 / 액티비티 표 */
+    .p-table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .p-table th { background: var(--coral-wash); color: var(--coral-deep); font-size: 0.8rem; padding: 8px 10px; text-align: left; }
+    .p-table td { border-top: 1px solid var(--line); padding: 8px 10px; font-size: 0.85rem; }
+    .p-num { color: var(--coral-deep); font-weight: 800; width: 24px; text-align: center; }
+    .notebar { background: var(--teal-wash); color: var(--teal-deep); font-size: 0.82rem; padding: 9px 12px; border-radius: 10px; margin-top: 8px; font-weight: 600; }
+
+    /* 참여 혜택 */
+    .perk-row { display: flex; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+    .perk-row:first-child { border-top: 0; }
+    .perk-ic { font-size: 1.5rem; line-height: 1; }
+    .perk-row .pt { font-weight: 800; }
+    .perk-row .pd { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+
+    /* 레크리에이션 */
+    .sub2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 560px) { .sub2 { grid-template-columns: 1fr; } }
+    .rec-card { border-radius: 12px; padding: 12px 14px; }
+    .rec-card.one { background: var(--teal-wash); }
+    .rec-card.two { background: var(--coral-wash); }
+    .rec-card ul { margin: 8px 0 0; padding-left: 18px; }
+    .rec-card li { font-size: 0.85rem; margin: 5px 0; }
+    .rec-tag { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 3px 11px; border-radius: 999px; margin: 2px 0 6px; }
+    .rec-tag.ind { background: #fff; color: var(--teal-deep); }
+    .rec-tag.team { background: #fff; color: var(--coral-deep); }
+    .sched-box { overflow-x: auto; }
+
+    /* ===== 모바일 최적화 (일정표를 세로 카드형으로) ===== */
+    @media (max-width: 620px) {
+      #capture { padding: 12px; border-radius: 14px; }
+      .psec { padding: 14px; }
+      .pchips { gap: 8px; }
+      .pchip { font-size: 0.82rem; padding: 7px 11px; }
+      .phead { font-size: 1rem; }
+      /* 일정표: 표 → 세로 카드 */
+      .sched-box { overflow-x: visible; }
+      .s-head { display: none; }                 /* 헤더행 숨김 */
+      .s-day { flex-direction: column; }          /* 날짜바를 위로 */
+      .daybar { flex: 0 0 auto; width: 100%; padding: 6px 12px; text-align: left; font-size: 0.85rem; }
+      .s-row { flex-wrap: wrap; padding: 9px 12px; }
+      .s-row > div { padding: 1px 0; }
+      .s-row .col-time { flex: 0 0 auto; margin-right: 12px; font-size: 0.86rem; }
+      .s-row .col-dur { flex: 0 0 auto; font-size: 0.76rem; }
+      .s-row .col-act { flex: 1 0 100%; white-space: normal; font-size: 0.9rem; margin-top: 2px; }
+      .s-row .col-note { flex: 1 0 100%; white-space: normal; font-size: 0.78rem; }
+      /* 준비물/액티비티 표 글씨 축소 */
+      .p-table th, .p-table td { padding: 6px 7px; font-size: 0.78rem; }
+      .perk-ic { font-size: 1.25rem; }
+    }
+  </style>
 </head>
 <body>
   <nav class="nav">
@@ -13,199 +108,314 @@
       <div class="nav-links">
         <a href="index.html">홈</a>
         <a href="schedule.html" class="active">일정표</a>
+        <a href="survey.html">답사</a>
         <a href="attendees.html">참석자</a>
         <a href="budget.html">예산</a>
         <a href="checklist.html">준비물</a>
+        <a href="wakeboard.html">웨이크보드</a>
+        <a href="talent.html">장기자랑</a>
+        <a href="game.html">게임</a>
+        <a href="draw.html">야유회 레크레이션</a>
       </div>
     </div>
   </nav>
 
   <main class="container">
-    <div class="page-head fade-up" style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
-      <div>
-        <h1>🗓️ 일정표</h1>
-        <p id="sub"></p>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span id="mode"></span>
+        <button class="btn" id="btn-edit">✏️ 편집 모드</button>
       </div>
-      <span id="mode"></span>
-    </div>
-
-    <!-- 직접 제작한 일정표 이미지 -->
-    <div class="card fade-up" style="padding:14px">
-      <img src="assets/일정표.png" alt="2026 퍼스트전산 여름 야유회 일정표"
-           style="width:100%;height:auto;display:block;border-radius:12px" />
-    </div>
-    <div class="toolbar" style="margin-top:14px">
-      <a class="btn" href="assets/일정표.png" target="_blank" rel="noopener">🔍 원본 크게 보기</a>
-      <a class="btn" href="assets/일정표.png" download="2026_퍼스트전산_야유회_일정표.png">⬇️ 이미지 저장</a>
-      <button class="btn" id="btn-toggle-editor">✏️ 텍스트 표로 편집</button>
-    </div>
-
-    <!-- 텍스트 표(편집용) — 기본 숨김 -->
-    <div id="editor" class="hidden">
-    <div class="toolbar">
-      <button class="btn btn-primary" id="btn-add">＋ 일정 추가</button>
-      <button class="btn" id="btn-edit">✏️ 편집 모드</button>
-    </div>
-
-    <div class="add-form hidden" id="add-form">
-      <div class="row">
-        <input class="inp" id="f-day" list="daylist" placeholder="일자 (예: 8월 29일 (토))" />
-        <input class="inp" id="f-time" placeholder="시간 (예: 14:00~15:00)" />
-        <input class="inp" id="f-dur" placeholder="소요 (예: 1시간)" />
-        <input class="inp" id="f-act" placeholder="일정 내용" />
-        <input class="inp" id="f-note" placeholder="비고(선택)" />
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" id="f-save">추가</button>
-        <button class="btn" id="f-cancel">취소</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="btn-jpg">📷 JPEG로 저장</button>
+        <button class="btn" id="btn-copy">📋 이미지 복사</button>
       </div>
     </div>
 
-    <div id="days"></div>
+    <div id="capture">
+      <img class="pbanner" src="assets/banner.png" alt="2026 퍼스트전산 여름 야유회" crossorigin="anonymous" />
+      <div class="pchips" id="chips"></div>
 
-    <h2 class="section-title"><span class="dot"></span> 비상연락망 (스탭)</h2>
-    <div class="grid cols-4" id="staff"></div>
-    </div><!-- /#editor -->
+      <div class="pgrid">
+        <!-- 왼쪽: 일정표 + 비상연락망 -->
+        <div>
+          <div class="psec">
+            <div class="phead"><span class="pnum">1</span> 일정표</div>
+            <div id="sched"></div>
+          </div>
+          <div class="psec">
+            <div class="phead"><span class="pnum">2</span> 비상연락망 <span style="font-weight:600;color:var(--muted);font-size:.85rem">(스탭)</span></div>
+            <div id="staff"></div>
+          </div>
+        </div>
+        <!-- 오른쪽: 세부내역 (⑥⑦⑧⑨) -->
+        <div>
+          <div class="psec">
+            <div class="phead"><span class="pnum teal">6</span> 준비물</div>
+            <div id="prep"></div>
+          </div>
+          <div class="psec">
+            <div class="phead"><span class="pnum teal">7</span> 액티비티 안내</div>
+            <div id="activity"></div>
+          </div>
+          <div class="psec">
+            <div class="phead"><span class="pnum teal">8</span> 참여 시 제공혜택</div>
+            <div id="perk"></div>
+          </div>
+          <div class="psec">
+            <div class="phead"><span class="pnum teal">9</span> 레크리에이션 진행안내</div>
+            <div id="rec"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <p class="foot">상단 이미지는 직접 제작한 일정표입니다 · 아래 “텍스트 표로 편집”에서 내용을 수정할 수 있어요</p>
+    <p class="foot">편집 모드로 수정 → <strong>📷 JPEG로 저장</strong>하면 카톡·문서에 붙여넣을 수 있어요 · 수정은 클라우드 자동 저장</p>
   </main>
 
-  <datalist id="daylist"></datalist>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="js/data.js"></script>
   <script src="js/config.js"></script>
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>
   <script>
-    const D = window.YAYU, e = D.event, T = "schedule_items";
-    let rows = [], editMode = false;
+    const D = window.YAYU, e = D.event, esc = UI.esc;
+    const T_SCHED = "schedule_items";
+    let editMode = false, sched = [], staff = [], info = {};
+    const DEFAULT_STAFF = D.staff.map(s => ({ name: s.name, role: s.role, phone: s.phone }));
+    const INFO_KEYS = ["prep_basic", "prep_activity", "activity", "perk", "rec1", "rec2"];
 
     document.getElementById("mode").innerHTML = UI.modePill();
-    document.getElementById("sub").textContent =
-      `${e.dateLabel} · ${e.nights} · ${e.vendor} (${e.place})`;
 
-    // 스탭은 참고용(고정)
-    document.getElementById("staff").innerHTML = D.staff.map(s => `
-      <div class="stat">
-        <div style="font-weight:800;font-size:1.05rem">${s.name}</div>
-        <div class="cap">${s.role}</div>
-        <a href="tel:${s.phone.replace(/-/g,"")}" style="color:var(--coral-deep);font-weight:700">${s.phone}</a>
-      </div>`).join("");
+    async function loadAll() {
+      const att = await STORE.list("attendees");
+      const attending = att.filter(a => a.attend !== false).length;
+      sched = await STORE.list(T_SCHED);
+      staff = await STORE.getSetting("staff", DEFAULT_STAFF);
+      info = await STORE.getSetting("info", {});
+      INFO_KEYS.forEach(k => { if (!Array.isArray(info[k])) info[k] = []; });
+      document.getElementById("chips").innerHTML = [
+        { lb: "📅 일정", v: `${e.dateLabel} · ${e.nights}` },
+        { lb: "👥 참여 인원", v: `총 ${attending}명` },
+        { lb: "🏊 업체", v: e.vendor },
+        { lb: "📍 장소", v: e.place },
+      ].map(c => `<div class="pchip"><span class="lb">${c.lb}</span><b>${esc(c.v)}</b></div>`).join("");
+      renderAll();
+    }
+    function renderAll() {
+      renderSchedule(); renderStaff();
+      renderPrep(); renderActivity(); renderPerk(); renderRec();
+      if (editMode) wireInfoEdits();
+    }
+    const saveStaff = () => STORE.setSetting("staff", staff);
+    const saveInfo = () => STORE.setSetting("info", info);
+    const noStar = arr => (arr || []).filter(x => !(x.title || "").trim().startsWith("※"));
+    const starNotes = arr => (arr || []).filter(x => (x.title || "").trim().startsWith("※")).map(x => x.detail);
 
-    function dayOrder() {
-      const days = [];
-      rows.forEach(r => { if (!days.includes(r.day)) days.push(r.day); });
-      return days;
+    /* 편집용 리스트 HTML + 위임 배선 */
+    function editListHTML(key) {
+      return (info[key] || []).map((it, i) => `<div class="info-row" data-key="${key}" data-i="${i}">
+        <div class="it" style="display:grid;gap:6px;grid-template-columns:1fr 1.2fr">
+          <input class="inp" data-f="title" value="${esc(it.title || "")}" placeholder="항목" />
+          <input class="inp" data-f="detail" value="${esc(it.detail || "")}" placeholder="상세" />
+        </div><button class="btn btn-icon btn-danger" data-del>🗑</button></div>`).join("")
+        + `<button class="btn btn-icon" style="margin-top:8px" data-addkey="${key}">＋ 추가</button>`;
+    }
+    function wireInfoEdits() {
+      document.querySelectorAll('.info-row[data-key]').forEach(row => {
+        const key = row.dataset.key, i = +row.dataset.i;
+        row.querySelectorAll("[data-f]").forEach(inp => inp.addEventListener("change", () => { info[key][i][inp.dataset.f] = inp.value; saveInfo(); UI.toast("저장됨"); }));
+        row.querySelector("[data-del]").addEventListener("click", () => { if (confirm("삭제할까요?")) { info[key].splice(i, 1); saveInfo(); renderAll(); } });
+      });
+      document.querySelectorAll("[data-addkey]").forEach(btn => btn.addEventListener("click", () => { info[btn.dataset.addkey].push({ title: "", detail: "" }); saveInfo(); renderAll(); }));
     }
 
-    async function load() {
-      rows = await STORE.list(T);
-      document.getElementById("daylist").innerHTML =
-        dayOrder().map(d => `<option>${UI.esc(d)}</option>`).join("");
-      render();
+    /* ① 일정표 */
+    function dayOrder() { const d = []; sched.forEach(r => { if (!d.includes(r.day)) d.push(r.day); }); return d; }
+    function shortOf(day) { const r = sched.find(x => x.day === day && x.short); return r ? r.short : ""; }
+    function compactDay(day) {
+      // "8월 29일 (토)" → "8/29<br>(토)"
+      return esc(String(day).replace(/(\d+)\s*월\s*(\d+)\s*일\s*/, "$1/$2 ")).replace(/\s*\(/, "<br>(");
     }
-
-    function shortOf(day) {
-      const r = rows.find(x => x.day === day && x.short);
-      return r ? r.short : "";
+    function renderSchedule() {
+      const host = document.getElementById("sched");
+      if (editMode) {
+        host.innerHTML = dayOrder().map(day => {
+          const list = sched.filter(r => r.day === day);
+          return `<div style="margin-bottom:12px"><div class="day-tab" style="margin-bottom:8px">${esc(shortOf(day))} · ${esc(day)}</div>
+            <div class="table-wrap"><table><thead><tr><th style="width:130px">시간</th><th style="width:66px">소요</th><th>일정</th><th>비고</th><th class="edit-col"></th></tr></thead>
+            <tbody>${list.map(r => `<tr data-id="${r.id}">
+              <td><input class="inp" data-f="time" value="${esc(r.time)}"/></td>
+              <td><input class="inp" data-f="dur" value="${esc(r.dur)}"/></td>
+              <td><input class="inp" data-f="act" value="${esc(r.act)}"/></td>
+              <td><input class="inp" data-f="note" value="${esc(r.note || "")}"/></td>
+              <td class="edit-col"><button class="btn btn-icon btn-danger" data-del="${r.id}">🗑</button></td></tr>`).join("")}</tbody></table></div>
+            <button class="btn btn-icon" style="margin-top:8px" data-addday="${esc(day)}">＋ 일정 추가</button></div>`;
+        }).join("");
+        wireSchedule();
+      } else {
+        const days = dayOrder().map(day => {
+          const list = sched.filter(r => r.day === day);
+          const rows = list.map(r => `<div class="s-row">
+            <div class="col-time">${esc(r.time)}</div>
+            <div class="col-dur">${esc(r.dur)}</div>
+            <div class="col-act">${esc(r.act)}</div>
+            <div class="col-note">${esc(r.note || "")}</div></div>`).join("");
+          return `<div class="s-day"><div class="daybar">${compactDay(day)}</div><div class="s-rows">${rows}</div></div>`;
+        }).join("");
+        host.innerHTML = `<div class="sched-box">
+          <div class="s-head"><div class="col-day">일자</div><div class="col-time">시간</div><div class="col-dur">소요</div><div class="col-act">일정</div><div class="col-note">비고</div></div>
+          ${days}
+          <div class="footbar">🎁 ${esc(e.perks.join(" · "))}</div></div>`;
+      }
     }
-
-    function render() {
-      document.getElementById("days").innerHTML = dayOrder().map(day => {
-        const list = rows.filter(r => r.day === day);
-        return `<div class="card" style="margin-bottom:18px">
-          <div class="day-tab">${UI.esc(shortOf(day))} · ${UI.esc(day)}</div>
-          <div class="table-wrap" style="margin-top:14px">
-            <table>
-              <thead><tr>
-                <th style="width:150px">시간</th><th style="width:100px">소요</th><th>일정</th><th>비고</th>
-                ${editMode ? '<th class="edit-col">삭제</th>' : ''}
-              </tr></thead>
-              <tbody>
-                ${list.map(r => editMode ? editRow(r) : viewRow(r)).join("")}
-              </tbody>
-            </table>
-          </div>
-        </div>`;
-      }).join("");
-      if (editMode) bindEdit();
-    }
-
-    function viewRow(r) {
-      return `<tr>
-        <td class="t-time">${UI.esc(r.time)}</td>
-        <td class="t-dur">${UI.esc(r.dur)}</td>
-        <td><strong>${UI.esc(r.act)}</strong></td>
-        <td>${r.note ? `<span class="badge badge-coral">${UI.esc(r.note)}</span>` : ""}</td>
-      </tr>`;
-    }
-    function editRow(r) {
-      return `<tr data-id="${r.id}">
-        <td><input class="inp" data-f="time" value="${UI.esc(r.time)}" /></td>
-        <td><input class="inp" data-f="dur" value="${UI.esc(r.dur)}" /></td>
-        <td><input class="inp" data-f="act" value="${UI.esc(r.act)}" /></td>
-        <td><input class="inp" data-f="note" value="${UI.esc(r.note||"")}" /></td>
-        <td class="edit-col"><button class="btn btn-icon btn-danger" data-del="${r.id}">🗑</button></td>
-      </tr>`;
-    }
-
-    function bindEdit() {
-      document.querySelectorAll('#days tr[data-id]').forEach(tr => {
+    function wireSchedule() {
+      document.querySelectorAll('#sched tr[data-id]').forEach(tr => {
         const id = tr.dataset.id;
-        tr.querySelectorAll("[data-f]").forEach(inp => {
-          inp.addEventListener("change", async () => {
-            const patch = { [inp.dataset.f]: inp.value };
-            await STORE.update(T, id, patch);
-            const r = rows.find(x => x.id === id); if (r) Object.assign(r, patch);
-            UI.toast("저장됨");
-          });
-        });
+        tr.querySelectorAll("[data-f]").forEach(inp => inp.addEventListener("change", async () => {
+          const patch = { [inp.dataset.f]: inp.value };
+          await STORE.update(T_SCHED, id, patch);
+          const r = sched.find(x => x.id === id); if (r) Object.assign(r, patch); UI.toast("저장됨");
+        }));
         tr.querySelector("[data-del]").addEventListener("click", async () => {
           if (!confirm("이 일정을 삭제할까요?")) return;
-          await STORE.remove(T, id);
-          UI.toast("삭제됨");
-          await load();
+          await STORE.remove(T_SCHED, id); UI.toast("삭제됨"); sched = await STORE.list(T_SCHED); renderSchedule();
         });
       });
+      document.querySelectorAll('#sched [data-addday]').forEach(btn => btn.addEventListener("click", async () => {
+        const day = btn.dataset.addday;
+        await STORE.add(T_SCHED, { day, short: shortOf(day) || day, time: "", dur: "", act: "새 일정", note: "" });
+        UI.toast("추가됨"); sched = await STORE.list(T_SCHED); renderSchedule();
+      }));
     }
 
-    document.getElementById("btn-toggle-editor").addEventListener("click", ev => {
-      const ed = document.getElementById("editor");
-      const hidden = ed.classList.toggle("hidden");
-      ev.target.textContent = hidden ? "✏️ 텍스트 표로 편집" : "🖼️ 접기";
-      ev.target.classList.toggle("btn-primary", !hidden);
-    });
+    /* ② 비상연락망 */
+    function roleShort(role) { const m = (role || "").match(/\(([^)]+)\)/); return m ? m[1] : (role || ""); }
+    function renderStaff() {
+      const host = document.getElementById("staff");
+      if (editMode) {
+        host.innerHTML = staff.map((s, i) => `<div class="info-row" data-i="${i}">
+          <div class="it" style="display:grid;gap:6px;grid-template-columns:1fr 1fr 1.2fr">
+            <input class="inp" data-f="name" value="${esc(s.name || "")}" placeholder="이름" />
+            <input class="inp" data-f="role" value="${esc(s.role || "")}" placeholder="역할" />
+            <input class="inp" data-f="phone" value="${esc(s.phone || "")}" placeholder="연락처" />
+          </div><button class="btn btn-icon btn-danger" data-del>🗑</button></div>`).join("")
+          + `<button class="btn btn-icon" style="margin-top:8px" id="add-staff">＋ 스탭 추가</button>`;
+        host.querySelectorAll('.info-row[data-i]').forEach(row => {
+          const i = +row.dataset.i;
+          row.querySelectorAll("[data-f]").forEach(inp => inp.addEventListener("change", () => { staff[i][inp.dataset.f] = inp.value; saveStaff(); UI.toast("저장됨"); }));
+          row.querySelector("[data-del]").addEventListener("click", () => { if (confirm("삭제할까요?")) { staff.splice(i, 1); saveStaff(); renderStaff(); } });
+        });
+        document.getElementById("add-staff").addEventListener("click", () => { staff.push({ name: "", role: "", phone: "" }); saveStaff(); renderStaff(); });
+      } else {
+        host.innerHTML = `<div class="staff-grid">` + staff.map(s => `<div class="staff-card">
+          <div class="staff-ini">${esc((s.name || "?").slice(0, 1))}</div>
+          <div><div class="nm">${esc(s.name)} <span style="color:var(--coral-deep);font-size:.76rem">${esc(roleShort(s.role))}</span></div>
+          <div class="ph">${esc(s.phone)}</div></div></div>`).join("") + `</div>`;
+      }
+    }
+
+    /* ⑥ 준비물 */
+    function renderPrep() {
+      const host = document.getElementById("prep");
+      if (editMode) {
+        host.innerHTML = `<div class="sub2">
+          <div><div class="subhead">기본 준비물</div>${editListHTML("prep_basic")}</div>
+          <div><div class="subhead">액티비티 대비</div>${editListHTML("prep_activity")}</div></div>`;
+        return;
+      }
+      const basic = noStar(info.prep_basic), act = noStar(info.prep_activity);
+      const notes = [...starNotes(info.prep_basic), ...starNotes(info.prep_activity)];
+      const n = Math.max(basic.length, act.length);
+      let rows = "";
+      const cell = it => it ? `<strong>${esc(it.title)}</strong>${it.detail ? ` <span style="color:var(--muted);font-size:.78rem">${esc(it.detail)}</span>` : ""}` : "";
+      for (let i = 0; i < n; i++) {
+        rows += `<tr><td class="p-num">${basic[i] ? i + 1 : ""}</td><td>${cell(basic[i])}</td>
+          <td class="p-num">${act[i] ? i + 1 : ""}</td><td>${cell(act[i])}</td></tr>`;
+      }
+      host.innerHTML = `<table class="p-table"><thead><tr><th colspan="2">기본 준비물</th><th colspan="2">액티비티 대비</th></tr></thead><tbody>${rows}</tbody></table>`
+        + notes.map(nt => `<div class="notebar">※ ${esc(nt)}</div>`).join("");
+    }
+
+    /* ⑦ 액티비티 안내 */
+    function renderActivity() {
+      const host = document.getElementById("activity");
+      if (editMode) { host.innerHTML = editListHTML("activity"); return; }
+      const items = noStar(info.activity), notes = starNotes(info.activity);
+      const rows = items.map((it, i) => `<tr><td class="p-num">${i + 1}</td><td><strong>${esc(it.title)}</strong></td><td>${esc(it.detail || "")}</td></tr>`).join("");
+      host.innerHTML = `<table class="p-table"><thead><tr><th>순</th><th>액티비티</th><th>시간</th></tr></thead><tbody>${rows}</tbody></table>`
+        + notes.map(nt => `<div class="notebar">※ ${esc(nt)}</div>`).join("");
+    }
+
+    /* ⑧ 참여 혜택 */
+    function renderPerk() {
+      const host = document.getElementById("perk");
+      if (editMode) { host.innerHTML = editListHTML("perk"); return; }
+      const icons = ["🌴", "🎁", "🛟", "✨", "🎈"];
+      host.innerHTML = (info.perk || []).map((it, i) => `<div class="perk-row">
+        <div class="perk-ic">${icons[i] || "🔹"}</div>
+        <div><div class="pt">${esc(it.title)}</div>${it.detail ? `<div class="pd">${esc(it.detail)}</div>` : ""}</div></div>`).join("");
+    }
+
+    /* ⑨ 레크리에이션 */
+    function renderRec() {
+      const host = document.getElementById("rec");
+      if (editMode) {
+        host.innerHTML = `<div class="sub2">
+          <div><div class="subhead">1부</div>${editListHTML("rec1")}</div>
+          <div><div class="subhead">2부</div>${editListHTML("rec2")}</div></div>`;
+        return;
+      }
+      const li = arr => (arr || []).map(it => `<li>${esc(it.title)}${it.detail ? ` <span style="color:var(--muted)">(${esc(it.detail)})</span>` : ""}</li>`).join("");
+      host.innerHTML = `<div class="sub2">
+        <div class="rec-card one"><div class="subhead">1부</div><div class="rec-tag ind">개인전 · 개인보상</div><ul>${li(info.rec1)}</ul></div>
+        <div class="rec-card two"><div class="subhead">2부</div><div class="rec-tag team">팀전 · 팀보상</div><ul>${li(info.rec2)}</ul></div>
+      </div><p class="cap" style="margin:10px 0 0">※ 진행순서에 따라 1·2부 순서는 바뀔 수 있습니다.</p>`;
+    }
 
     document.getElementById("btn-edit").addEventListener("click", ev => {
       editMode = !editMode;
       ev.target.classList.toggle("btn-primary", editMode);
       ev.target.textContent = editMode ? "✓ 편집 끝내기" : "✏️ 편집 모드";
-      render();
+      renderAll();
     });
 
-    const addForm = document.getElementById("add-form");
-    document.getElementById("btn-add").addEventListener("click", () => addForm.classList.toggle("hidden"));
-    document.getElementById("f-cancel").addEventListener("click", () => addForm.classList.add("hidden"));
-    document.getElementById("f-save").addEventListener("click", async () => {
-      const day = document.getElementById("f-day").value.trim();
-      const act = document.getElementById("f-act").value.trim();
-      if (!day || !act) { alert("일자와 일정 내용을 입력하세요."); return; }
-      const obj = {
-        day, short: shortOf(day) || day.replace(/[^0-9]/g, "").slice(0, 4) || "DAY",
-        time: document.getElementById("f-time").value.trim(),
-        dur: document.getElementById("f-dur").value.trim(),
-        act,
-        note: document.getElementById("f-note").value.trim(),
-      };
-      await STORE.add(T, obj);
-      ["f-time","f-dur","f-act","f-note"].forEach(id => document.getElementById(id).value = "");
-      addForm.classList.add("hidden");
-      UI.toast("추가됨");
-      await load();
+    /* 이미지 내보내기 */
+    async function capture() {
+      const wasEdit = editMode;
+      if (wasEdit) { editMode = false; renderAll(); }
+      const cap = document.getElementById("capture");
+      const prevW = cap.style.width, prevMax = cap.style.maxWidth;
+      cap.style.maxWidth = "none"; cap.style.width = "1180px";   // 넓게 렌더 → 글자 줄바꿈 줄임
+      await new Promise(r => setTimeout(r, 80));
+      const canvas = await html2canvas(cap, { scale: 2, backgroundColor: "#faf5ea", useCORS: true, logging: false, windowWidth: 1280 });
+      cap.style.width = prevW; cap.style.maxWidth = prevMax;
+      if (wasEdit) { editMode = true; renderAll(); }
+      return canvas;
+    }
+    document.getElementById("btn-jpg").addEventListener("click", async ev => {
+      const btn = ev.target, old = btn.textContent; btn.textContent = "만드는 중…"; btn.disabled = true;
+      try {
+        const c = await capture();
+        const a = document.createElement("a"); a.href = c.toDataURL("image/jpeg", 0.95); a.download = "2026_퍼스트전산_야유회_일정표.jpg"; a.click();
+        UI.toast("JPEG 이미지 저장됨");
+      } catch (err) { alert("저장 실패: " + err.message); }
+      finally { btn.textContent = old; btn.disabled = false; }
+    });
+    document.getElementById("btn-copy").addEventListener("click", async ev => {
+      const btn = ev.target, old = btn.textContent; btn.textContent = "복사 중…"; btn.disabled = true;
+      try {
+        const c = await capture();
+        c.toBlob(async blob => {
+          try { await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]); UI.toast("클립보드에 복사됨 — Ctrl+V 로 붙여넣기"); }
+          catch (e2) { const a = document.createElement("a"); a.href = c.toDataURL("image/jpeg", 0.95); a.download = "2026_퍼스트전산_야유회_일정표.jpg"; a.click(); UI.toast("복사 미지원 → 파일로 저장"); }
+          btn.textContent = old; btn.disabled = false;
+        }, "image/png");
+      } catch (err) { alert("복사 실패: " + err.message); btn.textContent = old; btn.disabled = false; }
     });
 
-    load();
+    loadAll();
   </script>
 </body>
 </html>

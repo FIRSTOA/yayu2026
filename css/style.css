@@ -4,6 +4,9 @@
    모든 페이지가 이 파일 하나를 공유합니다.
    ===================================================================== */
 
+/* 귀여운 둥근 한글 폰트 (Jua = 본문/제목, Gaegu = 손글씨 강조용) */
+@import url('https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@400;700&display=swap');
+
 :root {
   /* 팔레트 */
   --teal-deep: #0b6b78;
@@ -25,12 +28,13 @@
   --shadow: 0 10px 28px -14px rgba(18, 71, 82, 0.35);
   --shadow-hover: 0 18px 40px -16px rgba(18, 71, 82, 0.45);
   --maxw: 1080px;
-  --font: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-cute: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 }
 
 * { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; font-size: 17.5px; }
 
 body {
   margin: 0;
@@ -46,6 +50,9 @@ body {
 }
 
 a { color: inherit; text-decoration: none; }
+
+/* 폰트 통일(Jua) — 가짜 볼드 합성을 꺼서 글씨 깨짐 방지 */
+* { font-synthesis: none; -webkit-font-synthesis: none; }
 
 /* ===================== 상단 내비게이션 ===================== */
 .nav {
@@ -562,9 +569,69 @@ td .inp, td .sel { padding: 6px 8px; font-size: 0.86rem; }
 .pick-row .who .meta { color: var(--muted); font-size: 0.82rem; }
 .pick-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
 
+/* ===================== 이미지 확대(라이트박스) ===================== */
+.zoomable { cursor: zoom-in; }
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(15, 30, 36, 0.92);
+  overflow: auto;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  cursor: zoom-out;
+}
+.lightbox img {
+  width: min(1500px, 96vw);
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px -20px rgba(0,0,0,0.7);
+}
+.lightbox .lb-close {
+  position: fixed;
+  top: 16px; right: 20px;
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 800;
+  background: rgba(0,0,0,0.4);
+  border-radius: 50%;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+.hint {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--muted); font-size: 0.85rem; margin-top: 8px;
+}
+
+/* 세부내역 리스트(편집) */
+.info-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 2px; border-top: 1px solid var(--line);
+}
+.info-row:first-child { border-top: 0; }
+.info-row .it { flex: 1; }
+.info-row .it .t { font-weight: 700; }
+.info-row .it .d { color: var(--muted); font-size: 0.88rem; }
+
 /* 진입 애니메이션 */
 .fade-up { animation: fadeUp 0.5s ease both; }
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
+}
+
+/* ===================== 모바일 공통 최적화 ===================== */
+@media (max-width: 620px) {
+  .container { padding: 18px 14px 48px; }
+  .nav-inner { padding: 10px 14px; gap: 8px; }
+  .nav-links { gap: 4px; }
+  .nav-links a { padding: 6px 10px; font-size: 0.85rem; }
+  .nav-brand { font-size: 0.95rem; }
+  .page-head h1 { font-size: 1.4rem; }
+  .hero { padding: 24px 18px; }
+  .hero h1 { font-size: 1.7rem; }
+  .table-wrap { -webkit-overflow-scrolling: touch; }
 }

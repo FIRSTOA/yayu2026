@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>게임 추천 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .brandbar { text-align: center; padding: 16px 0 2px; font-weight: 800; color: var(--teal-deep); font-size: 1.02rem; }
+    .wb-hero { background: linear-gradient(125deg, var(--teal-deep), var(--teal) 60%, var(--teal-soft)); color: #fff; border-radius: 20px; padding: 24px 22px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+    .wb-hero::after { content: "🎲"; position: absolute; right: 16px; bottom: -8px; font-size: 5rem; opacity: .32; }
+    .wb-hero h1 { margin: 0 0 6px; font-size: 1.55rem; }
+    .wb-hero p { margin: 0; opacity: .95; }
+    .field { margin-bottom: 16px; }
+    .field > label { display: block; font-weight: 800; color: var(--teal-deep); margin-bottom: 7px; font-size: 0.95rem; }
+    .field .req { color: var(--coral-deep); }
+    .err-msg { color: var(--coral-deep); font-size: 0.85rem; margin-top: 6px; display: none; }
+    .field.invalid .inp { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-wash); }
+    .field.invalid .err-msg { display: block; }
+    .done-box { text-align: center; padding: 30px 16px; }
+    .hidden { display: none !important; }
+    @media (max-width: 620px) { .container { padding: 8px 14px 40px; } .wb-hero h1 { font-size: 1.4rem; } }
+  </style>
+</head>
+<body>
+  <div class="brandbar">🌊 2026 퍼스트전산 여름 야유회</div>
+
+  <main class="container" style="padding-top:6px">
+    <section class="wb-hero fade-up">
+      <h1>🎲 게임 추천</h1>
+      <p>야유회에서 다 같이 즐길 게임을 추천해 주세요! 추천 게임 중 선별해 진행합니다 🎲</p>
+    </section>
+
+    <div id="done" class="card hidden" style="margin-top:18px">
+      <div class="done-box">
+        <div style="font-size:3.2rem">🎉</div>
+        <h2 style="margin:8px 0 2px">추천 완료!</h2>
+        <p class="cap">소중한 추천 감사합니다.</p>
+        <div style="margin-top:18px"><button class="btn" id="btn-again">다른 게임 추천</button></div>
+      </div>
+    </div>
+
+    <form id="form" class="card" style="margin-top:18px">
+      <div class="field">
+        <label>추천자 이름 <span class="req">*</span></label>
+        <input class="inp" id="f-name" list="namelist" placeholder="이름 (입력/선택)" autocomplete="off" />
+        <div class="err-msg">이름을 입력하세요.</div>
+      </div>
+      <div class="field">
+        <label>소속 팀 / 부서 <span class="req">*</span></label>
+        <input class="inp" id="f-team" placeholder="예: 운영지원팀" autocomplete="off" />
+        <div class="err-msg">소속을 입력하세요.</div>
+      </div>
+      <div class="field">
+        <label>게임 이름 <span class="req">*</span></label>
+        <input class="inp" id="f-game" placeholder="예: 몸으로 말해요" autocomplete="off" />
+        <div class="err-msg">게임 이름을 입력하세요.</div>
+      </div>
+      <div class="field">
+        <label>게임 방법 / 규칙 <span class="req">*</span></label>
+        <textarea class="inp" id="f-how" style="min-height:90px;resize:vertical;font-family:inherit" placeholder="어떻게 진행하는 게임인지 간단히 적어주세요"></textarea>
+        <div class="err-msg">게임 방법을 입력하세요.</div>
+      </div>
+      <div class="field">
+        <label>필요 인원 (선택)</label>
+        <input class="inp" id="f-players" placeholder="예: 2팀 / 팀당 5명 / 전체" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>준비물 (선택)</label>
+        <input class="inp" id="f-items" placeholder="예: 종이컵, 안대, 없음" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>예상 소요시간 (선택)</label>
+        <input class="inp" id="f-time" placeholder="예: 10분" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>한마디 (선택)</label>
+        <textarea class="inp" id="f-memo" style="min-height:60px;resize:vertical;font-family:inherit" placeholder="추천 이유 등"></textarea>
+      </div>
+
+      <div id="submit-err" class="note-line hidden"></div>
+      <button type="submit" class="btn btn-primary" id="btn-submit" style="width:100%;justify-content:center;font-size:1.05rem;padding:13px">🎲 추천하기</button>
+    </form>
+
+    <p class="foot">추천은 실시간으로 접수됩니다 · 2026 퍼스트전산 여름 야유회</p>
+  </main>
+
+  <datalist id="namelist"></datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    const KEY = "games";
+    const esc = UI.esc, $ = id => document.getElementById(id);
+
+    let attMap = {};
+    (async () => {
+      try {
+        const att = await STORE.list("attendees");
+        att.forEach(a => { attMap[a.name] = a.dept; });
+        $("namelist").innerHTML = att.map(a => `<option value="${esc(a.name)}"></option>`).join("");
+      } catch (e) {}
+    })();
+    $("f-name").addEventListener("input", () => {
+      const d = attMap[$("f-name").value.trim()];
+      if (d && !$("f-team").value.trim()) $("f-team").value = d;
+    });
+
+    function collect() {
+      return {
+        name: $("f-name").value.trim(), team: $("f-team").value.trim(),
+        game: $("f-game").value.trim(), how: $("f-how").value.trim(),
+        players: $("f-players").value.trim(), items: $("f-items").value.trim(),
+        time: $("f-time").value.trim(), memo: $("f-memo").value.trim(),
+      };
+    }
+    function validate(d) {
+      const checks = [[!d.name, "f-name", "이름"], [!d.team, "f-team", "소속"], [!d.game, "f-game", "게임 이름"], [!d.how, "f-how", "게임 방법"]];
+      const miss = [];
+      checks.forEach(([bad, id, label]) => { $(id).closest(".field").classList.toggle("invalid", bad); if (bad) miss.push(label); });
+      return miss;
+    }
+    $("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const d = collect(), miss = validate(d), errBox = $("submit-err");
+      if (miss.length) { errBox.textContent = "필수 항목을 확인하세요: " + miss.join(", "); errBox.classList.remove("hidden"); document.querySelector(".field.invalid")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+      errBox.classList.add("hidden");
+      const btn = $("btn-submit"), old = btn.textContent; btn.disabled = true; btn.textContent = "전송 중… ⏳";
+      try {
+        const latest = await STORE.getSetting(KEY, []);
+        const list = Array.isArray(latest) ? latest : [];
+        if (list.some(x => x.name === d.name && x.game === d.game)) { errBox.textContent = "이미 같은 게임을 추천하셨어요."; errBox.classList.remove("hidden"); return; }
+        list.push({ id: "G" + String(list.length + 1).padStart(3, "0"), ...d, selected: false, ts: new Date().toISOString() });
+        await STORE.setSetting(KEY, list);
+        $("form").classList.add("hidden"); $("done").classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (err) { errBox.textContent = "전송 오류: 네트워크를 확인하고 다시 시도해 주세요."; errBox.classList.remove("hidden"); }
+      finally { btn.disabled = false; btn.textContent = old; }
+    });
+    $("btn-again").onclick = () => {
+      $("form").reset();
+      document.querySelectorAll(".field.invalid").forEach(f => f.classList.remove("invalid"));
+      $("done").classList.add("hidden"); $("form").classList.remove("hidden");
+    };
+  </script>
+</body>
+</html>

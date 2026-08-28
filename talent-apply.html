@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>장기자랑 신청 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .brandbar { text-align: center; padding: 16px 0 2px; font-weight: 800; color: var(--teal-deep); font-size: 1.02rem; }
+    .wb-hero { background: linear-gradient(125deg, var(--teal-deep), var(--teal) 60%, var(--teal-soft)); color: #fff; border-radius: 20px; padding: 24px 22px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+    .wb-hero::after { content: "🎤"; position: absolute; right: 16px; bottom: -8px; font-size: 5rem; opacity: .32; }
+    .wb-hero h1 { margin: 0 0 6px; font-size: 1.55rem; }
+    .wb-hero p { margin: 0; opacity: .95; }
+    .field { margin-bottom: 16px; }
+    .field > label { display: block; font-weight: 800; color: var(--teal-deep); margin-bottom: 7px; font-size: 0.95rem; }
+    .field .req { color: var(--coral-deep); }
+    .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .opt { display: inline-flex; align-items: center; gap: 7px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; font-size: 0.92rem; }
+    .opt input { accent-color: var(--teal); width: 17px; height: 17px; }
+    .opt.sel { border-color: var(--teal); background: var(--teal-wash); color: var(--teal-deep); font-weight: 700; }
+    .err-msg { color: var(--coral-deep); font-size: 0.85rem; margin-top: 6px; display: none; }
+    .field.invalid .inp, .field.invalid .sel { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-wash); }
+    .field.invalid .err-msg { display: block; }
+    .done-box { text-align: center; padding: 30px 16px; }
+    .done-box .ic { font-size: 3.2rem; }
+    .num-badge { display: inline-block; margin-top: 10px; padding: 8px 18px; border-radius: 999px; background: var(--teal-wash); color: var(--teal-deep); font-weight: 800; font-size: 1.15rem; }
+    .hidden { display: none !important; }
+    @media (max-width: 620px) { .container { padding: 8px 14px 40px; } .wb-hero h1 { font-size: 1.4rem; } }
+  </style>
+</head>
+<body>
+  <div class="brandbar">🌊 2026 퍼스트전산 여름 야유회</div>
+
+  <main class="container" style="padding-top:6px">
+    <section class="wb-hero fade-up">
+      <h1>🎤 장기자랑 신청</h1>
+      <p>야유회 장기자랑에 참여하실 분/팀은 신청해 주세요!</p>
+    </section>
+
+    <div id="closed" class="card hidden" style="text-align:center;padding:34px 16px;margin-top:18px">
+      <div style="font-size:3rem">⏰</div>
+      <h2 style="margin:10px 0 6px">신청이 마감되었습니다</h2>
+      <p class="cap" id="closed-msg"></p>
+    </div>
+
+    <div id="done" class="card hidden" style="margin-top:18px">
+      <div class="done-box">
+        <div class="ic">🎉</div>
+        <h2 style="margin:8px 0 2px">신청 완료!</h2>
+        <p class="cap">신청이 정상 접수되었습니다.</p>
+        <div class="num-badge" id="done-num"></div>
+        <div style="margin-top:18px"><button class="btn" id="btn-again">다른 신청 하기</button></div>
+      </div>
+    </div>
+
+    <form id="form" class="card" style="margin-top:18px">
+      <div class="field">
+        <label>신청자 이름 <span class="req">*</span></label>
+        <input class="inp" id="f-name" list="namelist" placeholder="이름 (입력/선택)" autocomplete="off" />
+        <div class="err-msg">이름을 입력하세요.</div>
+      </div>
+      <div class="field">
+        <label>소속 팀 / 부서 <span class="req">*</span></label>
+        <input class="inp" id="f-team" placeholder="예: 운영지원팀" autocomplete="off" />
+        <div class="err-msg">소속을 입력하세요.</div>
+      </div>
+
+      <div class="field">
+        <label>공연 형태 <span class="req">*</span></label>
+        <div class="opts" id="perfType">
+          <label class="opt"><input type="radio" name="perfType" value="개인" /> 개인</label>
+          <label class="opt"><input type="radio" name="perfType" value="팀" /> 팀</label>
+        </div>
+        <div class="err-msg">공연 형태를 선택하세요.</div>
+      </div>
+      <div id="team-block" class="hidden">
+        <div class="field">
+          <label>팀명 <span class="req">*</span></label>
+          <input class="inp" id="f-teamname" placeholder="예: 댄스크루 '불꽃'" autocomplete="off" />
+          <div class="err-msg">팀명을 입력하세요.</div>
+        </div>
+        <div class="field" id="members-field">
+          <label>팀원 이름 <span class="req">*</span></label>
+          <div id="members-list"></div>
+          <button type="button" class="btn btn-icon" id="btn-add-member" style="margin-top:2px">＋ 팀원 추가</button>
+          <div class="err-msg">팀원을 1명 이상 입력하세요.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>공연 종류 <span class="req">*</span></label>
+        <select class="sel" id="f-kind">
+          <option value="">선택하세요</option>
+          <option>노래</option><option>댄스</option><option>악기</option>
+          <option>개그/콩트</option><option value="기타">기타(직접입력)</option>
+        </select>
+        <input class="inp hidden" id="f-kind-etc" placeholder="공연 종류 직접 입력" style="margin-top:8px" />
+        <div class="err-msg">공연 종류를 선택하세요.</div>
+      </div>
+
+      <div class="field">
+        <label>곡명 / 공연 제목 <span class="req">*</span></label>
+        <input class="inp" id="f-title" placeholder="예: 벚꽃 엔딩" autocomplete="off" />
+        <div class="err-msg">제목을 입력하세요.</div>
+      </div>
+
+      <div class="field">
+        <label>예상 소요 시간 <span class="req">*</span></label>
+        <div class="opts" id="duration">
+          <label class="opt"><input type="radio" name="duration" value="3분 이내" /> 3분 이내</label>
+          <label class="opt"><input type="radio" name="duration" value="3~5분" /> 3~5분</label>
+          <label class="opt"><input type="radio" name="duration" value="5분 이상" /> 5분 이상</label>
+        </div>
+        <div class="err-msg">소요 시간을 선택하세요.</div>
+      </div>
+
+      <div class="field">
+        <label>필요 장비 (여러 개 선택 가능)</label>
+        <div class="opts" id="equipment">
+          <label class="opt"><input type="checkbox" value="마이크" /> 마이크</label>
+          <label class="opt"><input type="checkbox" value="음향(음원 재생)" /> 음향(음원 재생)</label>
+          <label class="opt"><input type="checkbox" value="프로젝터" /> 프로젝터</label>
+          <label class="opt"><input type="checkbox" value="없음" /> 없음</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>음원 링크 (선택)</label>
+        <input class="inp" id="f-music" placeholder="유튜브 URL 등" inputmode="url" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label>연락처 <span class="req">*</span></label>
+        <input class="inp" id="f-contact" placeholder="010-0000-0000" inputmode="tel" autocomplete="off" />
+        <div class="err-msg">연락처를 입력하세요.</div>
+      </div>
+
+      <div class="field">
+        <label>하고 싶은 말 (선택)</label>
+        <textarea class="inp" id="f-memo" style="min-height:80px;resize:vertical;font-family:inherit" placeholder="요청사항 등"></textarea>
+      </div>
+
+      <div id="submit-err" class="note-line hidden"></div>
+      <button type="submit" class="btn btn-primary" id="btn-submit" style="width:100%;justify-content:center;font-size:1.05rem;padding:13px">🎤 신청하기</button>
+    </form>
+
+    <p class="foot">신청은 실시간으로 접수됩니다 · 2026 퍼스트전산 여름 야유회</p>
+  </main>
+
+  <datalist id="namelist"></datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    const KEY = "talent";
+    const DEADLINE = "2026-08-28T19:00";
+    const esc = UI.esc, $ = id => document.getElementById(id);
+
+    /* 인사DB 이름→소속 자동 */
+    let attMap = {};
+    (async () => {
+      try {
+        const att = await STORE.list("attendees");
+        att.forEach(a => { attMap[a.name] = a.dept; });
+        $("namelist").innerHTML = att.map(a => `<option value="${esc(a.name)}"></option>`).join("");
+      } catch (e) {}
+    })();
+    $("f-name").addEventListener("input", () => {
+      const d = attMap[$("f-name").value.trim()];
+      if (d && !$("f-team").value.trim()) $("f-team").value = d;
+    });
+
+    /* 마감 */
+    if (new Date() > new Date(DEADLINE)) {
+      $("form").classList.add("hidden");
+      $("closed").classList.remove("hidden");
+      $("closed-msg").textContent = `마감: ${DEADLINE.replace("T", " ")} · 문의는 운영지원팀으로`;
+    }
+
+    /* 팀원 동적 추가 */
+    function addMemberRow(val) {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;gap:8px;margin-bottom:8px";
+      row.innerHTML = `<input class="inp member-inp" list="namelist" placeholder="팀원 이름 (입력/선택)" autocomplete="off" value="${val ? esc(val) : ""}" />
+        <button type="button" class="btn btn-icon btn-danger" data-mdel>🗑</button>`;
+      row.querySelector("[data-mdel]").addEventListener("click", () => row.remove());
+      $("members-list").appendChild(row);
+    }
+    document.querySelectorAll('#perfType input').forEach(r => r.addEventListener("change", () => {
+      const team = (r.value === "팀" && r.checked);
+      $("team-block").classList.toggle("hidden", !team);
+      if (team && $("members-list").children.length === 0) addMemberRow();
+    }));
+    $("btn-add-member").addEventListener("click", () => addMemberRow());
+
+    $("f-kind").addEventListener("change", () => $("f-kind-etc").classList.toggle("hidden", $("f-kind").value !== "기타"));
+    document.querySelectorAll(".opt input").forEach(inp => inp.addEventListener("change", () => {
+      const g = inp.closest(".opts");
+      if (inp.type === "radio") g.querySelectorAll(".opt").forEach(o => o.classList.toggle("sel", o.querySelector("input").checked));
+      else inp.closest(".opt").classList.toggle("sel", inp.checked);
+    }));
+
+    function collect() {
+      const kind = $("f-kind").value === "기타" ? $("f-kind-etc").value.trim() : $("f-kind").value;
+      const perf = document.querySelector('#perfType input:checked');
+      const dur = document.querySelector('#duration input:checked');
+      const equip = [...document.querySelectorAll('#equipment input:checked')].map(c => c.value);
+      const isTeam = perf && perf.value === "팀";
+      const members = isTeam ? [...document.querySelectorAll('#members-list .member-inp')].map(i => i.value.trim()).filter(Boolean) : [];
+      return {
+        name: $("f-name").value.trim(), team: $("f-team").value.trim(),
+        perfType: perf ? perf.value : "", teamName: isTeam ? $("f-teamname").value.trim() : "", members,
+        kind, title: $("f-title").value.trim(), duration: dur ? dur.value : "",
+        equipment: equip, music: $("f-music").value.trim(),
+        contact: $("f-contact").value.trim(), memo: $("f-memo").value.trim(),
+      };
+    }
+    function validate(d) {
+      const checks = [
+        [!d.name, "f-name", "이름"], [!d.team, "f-team", "소속"],
+        [!d.perfType, "perfType", "공연 형태"], [!d.kind, "f-kind", "공연 종류"],
+        [!d.title, "f-title", "제목"], [!d.duration, "duration", "소요 시간"],
+        [!d.contact, "f-contact", "연락처"],
+      ];
+      const miss = [];
+      checks.forEach(([bad, id, label]) => { $(id).closest(".field").classList.toggle("invalid", bad); if (bad) miss.push(label); });
+      if (d.perfType === "팀") {
+        const tn = !d.teamName; $("f-teamname").closest(".field").classList.toggle("invalid", tn); if (tn) miss.push("팀명");
+        const mb = !d.members.length; $("members-field").classList.toggle("invalid", mb); if (mb) miss.push("팀원");
+      }
+      return miss;
+    }
+
+    $("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const d = collect();
+      const miss = validate(d);
+      const errBox = $("submit-err");
+      if (miss.length) {
+        errBox.textContent = "필수 항목을 확인하세요: " + miss.join(", ");
+        errBox.classList.remove("hidden");
+        document.querySelector(".field.invalid")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      errBox.classList.add("hidden");
+      const btn = $("btn-submit"), old = btn.textContent;
+      btn.disabled = true; btn.textContent = "전송 중… ⏳";
+      try {
+        const latest = await STORE.getSetting(KEY, []);
+        const list = Array.isArray(latest) ? latest : [];
+        if (list.some(x => x.name === d.name && x.team === d.team)) {
+          errBox.textContent = "이미 같은 이름·팀으로 신청되어 있습니다.";
+          errBox.classList.remove("hidden");
+          return;
+        }
+        const id = "T" + String(list.length + 1).padStart(3, "0");
+        list.push({ id, ...d, ts: new Date().toISOString() });
+        await STORE.setSetting(KEY, list);
+        $("done-num").textContent = "신청번호 " + id;
+        $("form").classList.add("hidden");
+        $("done").classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (err) {
+        errBox.textContent = "전송 오류: 네트워크를 확인하고 다시 시도해 주세요.";
+        errBox.classList.remove("hidden");
+      } finally {
+        btn.disabled = false; btn.textContent = old;
+      }
+    });
+
+    $("btn-again").onclick = () => {
+      $("form").reset();
+      document.querySelectorAll(".opt.sel").forEach(o => o.classList.remove("sel"));
+      document.querySelectorAll(".field.invalid").forEach(f => f.classList.remove("invalid"));
+      $("team-block").classList.add("hidden"); $("members-list").innerHTML = "";
+      $("f-kind-etc").classList.add("hidden");
+      $("done").classList.add("hidden"); $("form").classList.remove("hidden");
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>웨이크보드 신청 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .wb-hero { background: linear-gradient(125deg, var(--teal-deep), var(--teal) 60%, var(--teal-soft)); color:#fff; border-radius:20px; padding:26px 24px; box-shadow:var(--shadow); position:relative; overflow:hidden; }
+    .wb-hero::after { content:"🏄"; position:absolute; right:18px; bottom:-6px; font-size:5rem; opacity:.35; }
+    .wb-hero h1 { margin:0 0 6px; font-size:1.7rem; }
+    .wb-hero p { margin:0; opacity:.95; }
+    .app-row { display:flex; align-items:center; gap:12px; padding:12px 6px; border-top:1px dashed var(--line); }
+    .app-row:first-child { border-top:0; }
+    .app-ini { flex:0 0 auto; width:38px; height:38px; border-radius:50%; background:var(--teal); color:#fff; font-weight:800; display:grid; place-items:center; }
+    .app-row .nm { font-weight:800; }
+    .app-row .meta { color:var(--muted); font-size:.85rem; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="wave">🌊</span> 퍼스트전산 여름 야유회</a>
+      <div class="nav-links">
+        <a href="index.html">홈</a>
+        <a href="schedule.html">일정표</a>
+        <a href="survey.html">답사</a>
+        <a href="attendees.html">참석자</a>
+        <a href="budget.html">예산</a>
+        <a href="checklist.html">준비물</a>
+        <a href="wakeboard.html" class="active">웨이크보드</a>
+        <a href="talent.html">장기자랑</a>
+        <a href="game.html">게임</a>
+        <a href="draw.html">야유회 레크레이션</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="wb-hero fade-up">
+      <h1>🏄 웨이크보드 신청</h1>
+      <p>웨이크보드(따로 액티비티) 타실 분은 신청해 주세요! · 실시간 집계됩니다</p>
+    </section>
+
+    <!-- 신청 폼 -->
+    <div class="card" style="margin-top:18px">
+      <div class="grid cols-3" style="gap:12px">
+        <div>
+          <label class="subhead" style="display:block;margin-bottom:6px;font-weight:800;color:var(--teal-deep)">이름 *</label>
+          <input class="inp" id="f-name" list="namelist" placeholder="이름 입력/선택" autocomplete="off" />
+        </div>
+        <div>
+          <label class="subhead" style="display:block;margin-bottom:6px;font-weight:800;color:var(--teal-deep)">부서</label>
+          <input class="inp" id="f-dept" placeholder="(자동/선택)" />
+        </div>
+        <div>
+          <label class="subhead" style="display:block;margin-bottom:6px;font-weight:800;color:var(--teal-deep)">한마디 (선택)</label>
+          <input class="inp" id="f-note" placeholder="예: 초보 / 경험 있음 / 보드 있음" />
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary" id="btn-apply">🏄 신청하기</button>
+        <span id="mode"></span>
+      </div>
+    </div>
+
+    <!-- 신청자 리스트 -->
+    <h2 class="section-title"><span class="dot"></span> 신청자 <span id="count" class="badge badge-teal" style="margin-left:6px"></span></h2>
+    <div class="card"><div id="list"></div></div>
+
+    <p class="foot">신청/취소는 클라우드에 자동 저장되어 모두에게 실시간 반영됩니다</p>
+  </main>
+
+  <datalist id="namelist"></datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    const esc = UI.esc, KEY = "wakeboard";
+    const PHOTO_BASE = "https://firstoa-hr.fly.dev/api/photos/";
+    const photoUrl = f => f ? PHOTO_BASE + f : "";
+    let applicants = [], attMap = {}, attPhoto = {};
+    document.getElementById("mode").innerHTML = UI.modePill();
+
+    function avatarHtml(name, photo) {
+      const init = esc((name || "?").slice(0, 1));
+      let h = `<span class="app-ini" style="position:relative;overflow:hidden">${init}`;
+      if (photo) h += `<img src="${photoUrl(photo)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()" />`;
+      return h + `</span>`;
+    }
+
+    async function load() {
+      const att = await STORE.list("attendees");
+      attMap = {}; attPhoto = {};
+      att.forEach(a => { attMap[a.name] = a.dept; attPhoto[a.name] = a.photo || ""; });
+      document.getElementById("namelist").innerHTML = att.map(a => `<option value="${esc(a.name)}"></option>`).join("");
+      applicants = await STORE.getSetting(KEY, []);
+      if (!Array.isArray(applicants)) applicants = [];
+      render();
+    }
+
+    function render() {
+      document.getElementById("count").textContent = `${applicants.length}명`;
+      const host = document.getElementById("list");
+      if (!applicants.length) {
+        host.innerHTML = '<div class="cap" style="padding:10px 0">아직 신청자가 없어요. 첫 번째로 신청해 보세요! 🏄</div>';
+        return;
+      }
+      host.innerHTML = applicants.map((a, i) => `<div class="app-row">
+        ${avatarHtml(a.name, a.photo || attPhoto[a.name])}
+        <div style="flex:1;min-width:0">
+          <div class="nm">${esc(a.name)}${a.dept ? ` <span class="badge badge-muted" style="font-size:.72rem">${esc(a.dept)}</span>` : ""}</div>
+          ${a.note ? `<div class="meta">${esc(a.note)}</div>` : ""}
+        </div>
+        <button class="btn btn-icon btn-danger" data-del="${i}" title="신청 취소">취소</button>
+      </div>`).join("");
+      host.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", () => removeApplicant(+btn.dataset.del)));
+    }
+
+    // 이름 선택 시 부서 자동 입력
+    document.getElementById("f-name").addEventListener("input", () => {
+      const n = document.getElementById("f-name").value.trim();
+      const d = attMap[n];
+      if (d && !document.getElementById("f-dept").value.trim()) document.getElementById("f-dept").value = d;
+    });
+
+    async function apply() {
+      const name = document.getElementById("f-name").value.trim();
+      if (!name) { alert("이름을 입력하세요."); return; }
+      // 최신 목록을 다시 읽어와서(동시 신청 대비) 추가
+      const latest = await STORE.getSetting(KEY, []);
+      const list = Array.isArray(latest) ? latest : [];
+      if (list.some(x => x.name === name)) { alert(`${name} 님은 이미 신청되어 있어요.`); await load(); return; }
+      list.push({ name, dept: document.getElementById("f-dept").value.trim() || attMap[name] || "", note: document.getElementById("f-note").value.trim(), photo: attPhoto[name] || "" });
+      await STORE.setSetting(KEY, list);
+      applicants = list;
+      ["f-name", "f-dept", "f-note"].forEach(id => document.getElementById(id).value = "");
+      UI.toast("신청 완료! 🏄");
+      render();
+      document.getElementById("f-name").focus();
+    }
+
+    async function removeApplicant(i) {
+      const target = applicants[i];
+      if (!target) return;
+      if (!confirm(`${target.name} 님 신청을 취소할까요?`)) return;
+      const latest = await STORE.getSetting(KEY, []);
+      const list = (Array.isArray(latest) ? latest : []).filter(x => x.name !== target.name);
+      await STORE.setSetting(KEY, list);
+      applicants = list;
+      UI.toast("취소됨");
+      render();
+    }
+
+    document.getElementById("btn-apply").addEventListener("click", apply);
+    document.querySelector("main").addEventListener("keydown", e => {
+      if (e.key === "Enter" && ["f-name", "f-dept", "f-note"].includes(e.target.id)) { e.preventDefault(); apply(); }
+    });
+
+    load();
+  </script>
+</body>
+</html>

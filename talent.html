@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>장기자랑 신청 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--cream); font-weight: 800; text-align: center; cursor: pointer; color: var(--muted); }
+    .tab.active { background: linear-gradient(120deg, var(--teal), var(--teal-deep)); color: #fff; border-color: transparent; }
+    .field { margin-bottom: 16px; }
+    .field > label { display: block; font-weight: 800; color: var(--teal-deep); margin-bottom: 7px; font-size: 0.95rem; }
+    .field .req { color: var(--coral-deep); }
+    .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .opt { display: inline-flex; align-items: center; gap: 7px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; cursor: pointer; font-size: 0.92rem; }
+    .opt input { accent-color: var(--teal); width: 17px; height: 17px; }
+    .opt.sel { border-color: var(--teal); background: var(--teal-wash); color: var(--teal-deep); font-weight: 700; }
+    .err-msg { color: var(--coral-deep); font-size: 0.85rem; margin-top: 6px; display: none; }
+    .field.invalid .inp, .field.invalid .sel { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-wash); }
+    .field.invalid .err-msg { display: block; }
+    .done-box { text-align: center; padding: 30px 16px; }
+    .done-box .ic { font-size: 3.2rem; }
+    .num-badge { display: inline-block; margin-top: 10px; padding: 8px 18px; border-radius: 999px; background: var(--teal-wash); color: var(--teal-deep); font-weight: 800; font-size: 1.15rem; }
+    .t-card { border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 10px; background: var(--cream); }
+    .t-card .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+    .t-card .nm { font-weight: 800; }
+    .t-card .meta { color: var(--muted); font-size: 0.85rem; margin-top: 3px; }
+    .sumrow { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .hidden { display: none !important; }
+    @media (max-width: 620px) { .container { padding: 12px 14px 40px; } }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="wave">🌊</span> 퍼스트전산 여름 야유회</a>
+      <div class="nav-links">
+        <a href="index.html">홈</a>
+        <a href="schedule.html">일정표</a>
+        <a href="survey.html">답사</a>
+        <a href="attendees.html">참석자</a>
+        <a href="budget.html">예산</a>
+        <a href="checklist.html">준비물</a>
+        <a href="wakeboard.html">웨이크보드</a>
+        <a href="talent.html" class="active">장기자랑</a>
+        <a href="game.html">게임</a>
+        <a href="draw.html">야유회 레크레이션</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-head fade-up">
+      <h1>🎤 장기자랑 신청</h1>
+      <p>야유회 장기자랑에 참여하실 분/팀은 신청해 주세요! · 실시간 저장</p>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-apply">🎤 신청하기</div>
+      <div class="tab" id="tab-admin">🔒 신청 현황</div>
+    </div>
+
+    <!-- ===== 신청 탭 ===== -->
+    <section id="panel-apply">
+      <div id="closed" class="card hidden" style="text-align:center;padding:34px 16px">
+        <div style="font-size:3rem">⏰</div>
+        <h2 style="margin:10px 0 6px">신청이 마감되었습니다</h2>
+        <p class="cap" id="closed-msg"></p>
+      </div>
+
+      <div id="done" class="card hidden">
+        <div class="done-box">
+          <div class="ic">🎉</div>
+          <h2 style="margin:8px 0 2px">신청 완료!</h2>
+          <p class="cap">신청이 정상 접수되었습니다.</p>
+          <div class="num-badge" id="done-num"></div>
+          <div style="margin-top:18px"><button class="btn" id="btn-again">다른 신청 하기</button></div>
+        </div>
+      </div>
+
+      <form id="form" class="card">
+        <div class="field">
+          <label>신청자 이름 <span class="req">*</span></label>
+          <input class="inp" id="f-name" list="namelist" placeholder="이름 (입력/선택)" autocomplete="off" />
+          <div class="err-msg">이름을 입력하세요.</div>
+        </div>
+        <div class="field">
+          <label>소속 팀 / 부서 <span class="req">*</span></label>
+          <input class="inp" id="f-team" placeholder="예: 운영지원팀" autocomplete="off" />
+          <div class="err-msg">소속을 입력하세요.</div>
+        </div>
+
+        <div class="field">
+          <label>공연 형태 <span class="req">*</span></label>
+          <div class="opts" id="perfType">
+            <label class="opt"><input type="radio" name="perfType" value="개인" /> 개인</label>
+            <label class="opt"><input type="radio" name="perfType" value="팀" /> 팀</label>
+          </div>
+          <div class="err-msg">공연 형태를 선택하세요.</div>
+        </div>
+        <div id="team-block" class="hidden">
+          <div class="field">
+            <label>팀명 <span class="req">*</span></label>
+            <input class="inp" id="f-teamname" placeholder="예: 댄스크루 '불꽃'" autocomplete="off" />
+            <div class="err-msg">팀명을 입력하세요.</div>
+          </div>
+          <div class="field" id="members-field">
+            <label>팀원 이름 <span class="req">*</span></label>
+            <div id="members-list"></div>
+            <button type="button" class="btn btn-icon" id="btn-add-member" style="margin-top:2px">＋ 팀원 추가</button>
+            <div class="err-msg">팀원을 1명 이상 입력하세요.</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>공연 종류 <span class="req">*</span></label>
+          <select class="sel" id="f-kind">
+            <option value="">선택하세요</option>
+            <option>노래</option><option>댄스</option><option>악기</option>
+            <option>개그/콩트</option><option value="기타">기타(직접입력)</option>
+          </select>
+          <input class="inp hidden" id="f-kind-etc" placeholder="공연 종류 직접 입력" style="margin-top:8px" />
+          <div class="err-msg">공연 종류를 선택하세요.</div>
+        </div>
+
+        <div class="field">
+          <label>곡명 / 공연 제목 <span class="req">*</span></label>
+          <input class="inp" id="f-title" placeholder="예: 벚꽃 엔딩" autocomplete="off" />
+          <div class="err-msg">제목을 입력하세요.</div>
+        </div>
+
+        <div class="field">
+          <label>예상 소요 시간 <span class="req">*</span></label>
+          <div class="opts" id="duration">
+            <label class="opt"><input type="radio" name="duration" value="3분 이내" /> 3분 이내</label>
+            <label class="opt"><input type="radio" name="duration" value="3~5분" /> 3~5분</label>
+            <label class="opt"><input type="radio" name="duration" value="5분 이상" /> 5분 이상</label>
+          </div>
+          <div class="err-msg">소요 시간을 선택하세요.</div>
+        </div>
+
+        <div class="field">
+          <label>필요 장비 (여러 개 선택 가능)</label>
+          <div class="opts" id="equipment">
+            <label class="opt"><input type="checkbox" value="마이크" /> 마이크</label>
+            <label class="opt"><input type="checkbox" value="음향(음원 재생)" /> 음향(음원 재생)</label>
+            <label class="opt"><input type="checkbox" value="프로젝터" /> 프로젝터</label>
+            <label class="opt"><input type="checkbox" value="없음" /> 없음</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>음원 링크 (선택)</label>
+          <input class="inp" id="f-music" placeholder="유튜브 URL 등" inputmode="url" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label>연락처 <span class="req">*</span></label>
+          <input class="inp" id="f-contact" placeholder="010-0000-0000" inputmode="tel" autocomplete="off" />
+          <div class="err-msg">연락처를 입력하세요.</div>
+        </div>
+
+        <div class="field">
+          <label>하고 싶은 말 (선택)</label>
+          <textarea class="inp" id="f-memo" style="min-height:80px;resize:vertical;font-family:inherit" placeholder="요청사항 등"></textarea>
+        </div>
+
+        <div id="submit-err" class="note-line hidden"></div>
+        <button type="submit" class="btn btn-primary" id="btn-submit" style="width:100%;justify-content:center;font-size:1.05rem;padding:13px">🎤 신청하기</button>
+      </form>
+    </section>
+
+    <!-- ===== 신청 현황 탭 (관리자) ===== -->
+    <section id="panel-admin" class="hidden">
+      <form id="admin-gate" class="card" style="max-width:420px;margin:0 auto;text-align:center">
+        <div style="font-size:2rem">🔒</div>
+        <h2 style="margin:8px 0 4px">관리자 확인</h2>
+        <p class="cap" style="margin:0 0 14px">신청 현황은 관리자만 볼 수 있어요</p>
+        <input class="inp" id="admin-pw" type="password" placeholder="비밀번호" autocomplete="off" style="text-align:center" />
+        <div id="admin-err" style="color:var(--coral-deep);font-size:.85rem;min-height:18px;margin:8px 0"></div>
+        <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center">확인</button>
+      </form>
+
+      <div id="admin-list" class="hidden">
+        <div class="sumrow">
+          <div class="stat" style="flex:1"><div class="num" id="sum-count">-</div><div class="cap">신청 팀/개인</div></div>
+          <div class="stat" style="flex:1"><div class="num coral" id="sum-time">-</div><div class="cap">예상 총 공연 시간</div></div>
+        </div>
+        <div class="toolbar">
+          <button class="btn" id="btn-csv">⬇️ CSV 다운로드</button>
+          <button class="btn" id="btn-refresh">🔄 새로고침</button>
+          <button class="btn" id="btn-logout">로그아웃</button>
+        </div>
+        <div id="cards"></div>
+      </div>
+    </section>
+  </main>
+
+  <datalist id="namelist"></datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    /* ================== 설정 ================== */
+    const KEY = "talent";                          // Supabase settings 키 (웨이크보드와 동일 방식)
+    const DEADLINE = "2026-08-28T19:00";           // 신청 마감 (KST)
+    const ADMIN_HASH = "d3781c68";                 // 관리자 비밀번호 5512 의 해시
+    /* ========================================= */
+    const adminHash = s => { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); };
+    const esc = UI.esc, $ = id => document.getElementById(id);
+
+    /* ---------- 인사DB(참석자) 연동: 이름→소속 자동 + 사진 ---------- */
+    const PHOTO_BASE = "https://firstoa-hr.fly.dev/api/photos/";
+    let attMap = {}, attPhoto = {};
+    function avatarHtml(name, size) {
+      const s = size || 34, init = esc((name || "?").slice(0, 1)), photo = attPhoto[name];
+      let h = `<span class="avatar-fallback" style="width:${s}px;height:${s}px;padding:0;position:relative;overflow:hidden;flex:0 0 auto">${init}`;
+      if (photo) h += `<img src="${PHOTO_BASE + photo}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()" />`;
+      return h + `</span>`;
+    }
+    (async () => {
+      try {
+        const att = await STORE.list("attendees");
+        att.forEach(a => { attMap[a.name] = a.dept; attPhoto[a.name] = a.photo || ""; });
+        $("namelist").innerHTML = att.map(a => `<option value="${esc(a.name)}"></option>`).join("");
+      } catch (e) {}
+    })();
+    $("f-name").addEventListener("input", () => {
+      const d = attMap[$("f-name").value.trim()];
+      if (d && !$("f-team").value.trim()) $("f-team").value = d;
+    });
+
+    /* ---------- 탭 ---------- */
+    $("tab-apply").onclick = () => switchTab("apply");
+    $("tab-admin").onclick = () => switchTab("admin");
+    function switchTab(t) {
+      $("tab-apply").classList.toggle("active", t === "apply");
+      $("tab-admin").classList.toggle("active", t === "admin");
+      $("panel-apply").classList.toggle("hidden", t !== "apply");
+      $("panel-admin").classList.toggle("hidden", t !== "admin");
+      if (t === "admin") enterAdmin();
+    }
+
+    /* ---------- 마감 ---------- */
+    if (new Date() > new Date(DEADLINE)) {
+      $("form").classList.add("hidden");
+      $("closed").classList.remove("hidden");
+      $("closed-msg").textContent = `마감: ${DEADLINE.replace("T", " ")} · 문의는 운영지원팀으로`;
+    }
+
+    /* ---------- 조건부 표시 + 선택 하이라이트 ---------- */
+    function addMemberRow(val) {
+      const row = document.createElement("div");
+      row.className = "mrow";
+      row.style.cssText = "display:flex;gap:8px;margin-bottom:8px";
+      row.innerHTML = `<input class="inp member-inp" list="namelist" placeholder="팀원 이름 (입력/선택)" autocomplete="off" value="${val ? esc(val) : ""}" />
+        <button type="button" class="btn btn-icon btn-danger" data-mdel>🗑</button>`;
+      row.querySelector("[data-mdel]").addEventListener("click", () => row.remove());
+      $("members-list").appendChild(row);
+    }
+    document.querySelectorAll('#perfType input').forEach(r => r.addEventListener("change", () => {
+      const team = (r.value === "팀" && r.checked);
+      $("team-block").classList.toggle("hidden", !team);
+      if (team && $("members-list").children.length === 0) addMemberRow();
+    }));
+    $("btn-add-member").addEventListener("click", () => addMemberRow());
+    $("f-kind").addEventListener("change", () => $("f-kind-etc").classList.toggle("hidden", $("f-kind").value !== "기타"));
+    document.querySelectorAll(".opt input").forEach(inp => inp.addEventListener("change", () => {
+      const g = inp.closest(".opts");
+      if (inp.type === "radio") g.querySelectorAll(".opt").forEach(o => o.classList.toggle("sel", o.querySelector("input").checked));
+      else inp.closest(".opt").classList.toggle("sel", inp.checked);
+    }));
+
+    /* ---------- 수집 + 검증 ---------- */
+    function collect() {
+      const kind = $("f-kind").value === "기타" ? $("f-kind-etc").value.trim() : $("f-kind").value;
+      const perf = document.querySelector('#perfType input:checked');
+      const dur = document.querySelector('#duration input:checked');
+      const equip = [...document.querySelectorAll('#equipment input:checked')].map(c => c.value);
+      const isTeam = perf && perf.value === "팀";
+      const members = isTeam ? [...document.querySelectorAll('#members-list .member-inp')].map(i => i.value.trim()).filter(Boolean) : [];
+      return {
+        name: $("f-name").value.trim(), team: $("f-team").value.trim(),
+        perfType: perf ? perf.value : "", teamName: isTeam ? $("f-teamname").value.trim() : "", members,
+        kind, title: $("f-title").value.trim(), duration: dur ? dur.value : "",
+        equipment: equip, music: $("f-music").value.trim(),
+        contact: $("f-contact").value.trim(), memo: $("f-memo").value.trim(),
+      };
+    }
+    function validate(d) {
+      const checks = [
+        [!d.name, "f-name", "이름"], [!d.team, "f-team", "소속"],
+        [!d.perfType, "perfType", "공연 형태"], [!d.kind, "f-kind", "공연 종류"],
+        [!d.title, "f-title", "제목"], [!d.duration, "duration", "소요 시간"],
+        [!d.contact, "f-contact", "연락처"],
+      ];
+      const miss = [];
+      checks.forEach(([bad, id, label]) => {
+        $(id).closest(".field").classList.toggle("invalid", bad);
+        if (bad) miss.push(label);
+      });
+      if (d.perfType === "팀") {
+        const tn = !d.teamName; $("f-teamname").closest(".field").classList.toggle("invalid", tn); if (tn) miss.push("팀명");
+        const mb = !d.members.length; $("members-field").classList.toggle("invalid", mb); if (mb) miss.push("팀원");
+      }
+      return miss;
+    }
+
+    $("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const d = collect();
+      const miss = validate(d);
+      const errBox = $("submit-err");
+      if (miss.length) {
+        errBox.textContent = "필수 항목을 확인하세요: " + miss.join(", ");
+        errBox.classList.remove("hidden");
+        document.querySelector(".field.invalid")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      errBox.classList.add("hidden");
+      const btn = $("btn-submit"), old = btn.textContent;
+      btn.disabled = true; btn.textContent = "전송 중… ⏳";
+      try {
+        const latest = await STORE.getSetting(KEY, []);
+        const list = Array.isArray(latest) ? latest : [];
+        if (list.some(x => x.name === d.name && x.team === d.team)) {
+          errBox.textContent = "이미 같은 이름·팀으로 신청되어 있습니다.";
+          errBox.classList.remove("hidden");
+          return;
+        }
+        const id = "T" + String(list.length + 1).padStart(3, "0");
+        list.push({ id, ...d, ts: new Date().toISOString() });
+        await STORE.setSetting(KEY, list);
+        $("done-num").textContent = "신청번호 " + id;
+        $("form").classList.add("hidden");
+        $("done").classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (err) {
+        errBox.textContent = "전송 오류: 네트워크를 확인하고 다시 시도해 주세요.";
+        errBox.classList.remove("hidden");
+      } finally {
+        btn.disabled = false; btn.textContent = old;   // 입력값 유지
+      }
+    });
+
+    $("btn-again").onclick = () => {
+      $("form").reset();
+      document.querySelectorAll(".opt.sel").forEach(o => o.classList.remove("sel"));
+      document.querySelectorAll(".field.invalid").forEach(f => f.classList.remove("invalid"));
+      $("team-block").classList.add("hidden"); $("members-list").innerHTML = "";
+      $("f-kind-etc").classList.add("hidden");
+      $("done").classList.add("hidden"); $("form").classList.remove("hidden");
+    };
+
+    /* ================== 관리자 현황 ================== */
+    const SS_KEY = "talent-admin-ok";
+    const DUR_MIN = { "3분 이내": 3, "3~5분": 5, "5분 이상": 7 };
+    let currentList = [];
+
+    function enterAdmin() { if (sessionStorage.getItem(SS_KEY) === "1") loadList(); }
+
+    $("admin-gate").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const pw = $("admin-pw").value.trim();
+      if (adminHash(pw) === ADMIN_HASH) {
+        sessionStorage.setItem(SS_KEY, "1");
+        $("admin-err").textContent = "";
+        loadList();
+      } else {
+        $("admin-err").textContent = "비밀번호가 올바르지 않습니다";
+        $("admin-pw").value = "";
+      }
+    });
+
+    async function loadList() {
+      $("admin-gate").classList.add("hidden");
+      $("admin-list").classList.remove("hidden");
+      const l = await STORE.getSetting(KEY, []);
+      currentList = Array.isArray(l) ? l : [];
+      renderList();
+    }
+
+    function membersArr(x) { return Array.isArray(x.members) ? x.members : (x.members ? String(x.members).split(/[,\n]+/).map(s => s.trim()).filter(Boolean) : []); }
+    function renderList() {
+      $("sum-count").textContent = currentList.length + "팀";
+      const mins = currentList.reduce((s, x) => s + (DUR_MIN[x.duration] || 4), 0);
+      $("sum-time").textContent = "약 " + mins + "분";
+      $("cards").innerHTML = currentList.map((x, i) => {
+        const mem = membersArr(x);
+        return `<div class="t-card">
+        <div class="top">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0">
+            ${avatarHtml(x.name, 42)}
+            <div style="min-width:0">
+              <div><span class="nm">${esc(x.name)}</span> <span class="badge badge-muted">${esc(x.team)}</span> <span class="badge badge-teal">${esc(x.id || "")}</span></div>
+              ${x.perfType === "팀" && x.teamName ? `<div class="meta">🎭 팀명: <strong>${esc(x.teamName)}</strong></div>` : ""}
+            </div>
+          </div>
+          <button class="btn btn-icon btn-danger" data-del="${i}">🗑</button>
+        </div>
+        <div class="meta">🎵 <strong>${esc(x.title)}</strong> · ${esc(x.kind)} · ${esc(x.perfType)} · ⏱ ${esc(x.duration)}</div>
+        ${mem.length ? `<div class="meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px">👥 ${mem.map(m => `<span style="display:inline-flex;align-items:center;gap:4px">${avatarHtml(m, 26)}<span style="font-size:.82rem">${esc(m)}</span></span>`).join("")}</div>` : ""}
+        <div class="meta">🎚 ${esc((x.equipment || []).join ? x.equipment.join(", ") : x.equipment) || "-"}${x.music ? " · 🔗 " + esc(x.music) : ""}</div>
+        <div class="meta">📞 ${esc(x.contact)}${x.memo ? " · 💬 " + esc(x.memo) : ""}</div>
+      </div>`;
+      }).join("") || '<div class="cap" style="text-align:center;padding:20px">아직 신청이 없습니다.</div>';
+      $("cards").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => delItem(+b.dataset.del)));
+    }
+
+    async function delItem(i) {
+      const t = currentList[i]; if (!t) return;
+      if (!confirm(`${t.name}(${t.team}) 신청을 삭제할까요?`)) return;
+      const l = await STORE.getSetting(KEY, []);
+      const nl = (Array.isArray(l) ? l : []).filter(x => !(x.name === t.name && x.team === t.team));
+      await STORE.setSetting(KEY, nl);
+      currentList = nl; renderList(); UI.toast("삭제됨");
+    }
+
+    $("btn-refresh").onclick = loadList;
+    $("btn-logout").onclick = () => {
+      sessionStorage.removeItem(SS_KEY);
+      $("admin-list").classList.add("hidden");
+      $("admin-gate").classList.remove("hidden");
+      $("admin-pw").value = ""; $("admin-err").textContent = "";
+    };
+    $("btn-csv").onclick = () => {
+      const cols = ["신청번호","이름","소속","개인/팀","팀명","팀원","공연종류","제목","소요시간","필요장비","음원링크","연락처","메모","신청시각"];
+      const rows = currentList.map(x => [x.id, x.name, x.team, x.perfType, x.teamName || "", membersArr(x).join(" "),
+        x.kind, x.title, x.duration, (x.equipment || []).join ? x.equipment.join(" ") : x.equipment, x.music, x.contact, x.memo, x.ts]);
+      const csv = [cols, ...rows].map(r => r.map(c => `"${String(c == null ? "" : c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "장기자랑_신청목록.csv"; a.click();
+      URL.revokeObjectURL(a.href);
+    };
+  </script>
+</body>
+</html>

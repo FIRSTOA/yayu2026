@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>게임 추천 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--cream); font-weight: 800; text-align: center; cursor: pointer; color: var(--muted); }
+    .tab.active { background: linear-gradient(120deg, var(--teal), var(--teal-deep)); color: #fff; border-color: transparent; }
+    .field { margin-bottom: 16px; }
+    .field > label { display: block; font-weight: 800; color: var(--teal-deep); margin-bottom: 7px; font-size: 0.95rem; }
+    .field .req { color: var(--coral-deep); }
+    .err-msg { color: var(--coral-deep); font-size: 0.85rem; margin-top: 6px; display: none; }
+    .field.invalid .inp { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-wash); }
+    .field.invalid .err-msg { display: block; }
+    .done-box { text-align: center; padding: 30px 16px; }
+    .g-card { border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 10px; background: var(--cream); }
+    .g-card.on { border-color: var(--teal); box-shadow: 0 0 0 2px var(--teal-wash); }
+    .g-card .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+    .g-card .gname { font-weight: 800; font-size: 1.05rem; }
+    .g-card .meta { color: var(--muted); font-size: 0.86rem; margin-top: 4px; white-space: pre-wrap; }
+    .who { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .hidden { display: none !important; }
+    @media (max-width: 620px) { .container { padding: 12px 14px 40px; } }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="wave">🌊</span> 퍼스트전산 여름 야유회</a>
+      <div class="nav-links">
+        <a href="index.html">홈</a>
+        <a href="schedule.html">일정표</a>
+        <a href="survey.html">답사</a>
+        <a href="attendees.html">참석자</a>
+        <a href="budget.html">예산</a>
+        <a href="checklist.html">준비물</a>
+        <a href="wakeboard.html">웨이크보드</a>
+        <a href="talent.html">장기자랑</a>
+        <a href="game.html" class="active">게임</a>
+        <a href="draw.html">야유회 레크레이션</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-head fade-up">
+      <h1>🎲 게임 추천</h1>
+      <p>야유회에서 다 같이 즐길 게임을 추천해 주세요! 추천 게임 중 선별해 진행합니다 🎲</p>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-apply">🎲 게임 추천하기</div>
+      <div class="tab" id="tab-admin">🔒 추천 현황</div>
+    </div>
+
+    <!-- 추천 폼 -->
+    <section id="panel-apply">
+      <div id="done" class="card hidden">
+        <div class="done-box">
+          <div style="font-size:3.2rem">🎉</div>
+          <h2 style="margin:8px 0 2px">추천 완료!</h2>
+          <p class="cap">소중한 추천 감사합니다.</p>
+          <div style="margin-top:18px"><button class="btn" id="btn-again">다른 게임 추천</button></div>
+        </div>
+      </div>
+
+      <form id="form" class="card">
+        <div class="field">
+          <label>추천자 이름 <span class="req">*</span></label>
+          <input class="inp" id="f-name" list="namelist" placeholder="이름 (입력/선택)" autocomplete="off" />
+          <div class="err-msg">이름을 입력하세요.</div>
+        </div>
+        <div class="field">
+          <label>소속 팀 / 부서 <span class="req">*</span></label>
+          <input class="inp" id="f-team" placeholder="예: 운영지원팀" autocomplete="off" />
+          <div class="err-msg">소속을 입력하세요.</div>
+        </div>
+        <div class="field">
+          <label>게임 이름 <span class="req">*</span></label>
+          <input class="inp" id="f-game" placeholder="예: 몸으로 말해요" autocomplete="off" />
+          <div class="err-msg">게임 이름을 입력하세요.</div>
+        </div>
+        <div class="field">
+          <label>게임 방법 / 규칙 <span class="req">*</span></label>
+          <textarea class="inp" id="f-how" style="min-height:90px;resize:vertical;font-family:inherit" placeholder="어떻게 진행하는 게임인지 간단히 적어주세요"></textarea>
+          <div class="err-msg">게임 방법을 입력하세요.</div>
+        </div>
+        <div class="field">
+          <label>필요 인원 (선택)</label>
+          <input class="inp" id="f-players" placeholder="예: 2팀 / 팀당 5명 / 전체" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>준비물 (선택)</label>
+          <input class="inp" id="f-items" placeholder="예: 종이컵, 안대, 없음" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>예상 소요시간 (선택)</label>
+          <input class="inp" id="f-time" placeholder="예: 10분" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>한마디 (선택)</label>
+          <textarea class="inp" id="f-memo" style="min-height:60px;resize:vertical;font-family:inherit" placeholder="추천 이유 등"></textarea>
+        </div>
+
+        <div id="submit-err" class="note-line hidden"></div>
+        <button type="submit" class="btn btn-primary" id="btn-submit" style="width:100%;justify-content:center;font-size:1.05rem;padding:13px">🎲 추천하기</button>
+      </form>
+    </section>
+
+    <!-- 추천 현황 (관리자) -->
+    <section id="panel-admin" class="hidden">
+      <form id="admin-gate" class="card" style="max-width:420px;margin:0 auto;text-align:center">
+        <div style="font-size:2rem">🔒</div>
+        <h2 style="margin:8px 0 4px">관리자 확인</h2>
+        <p class="cap" style="margin:0 0 14px">추천 현황은 관리자만 볼 수 있어요</p>
+        <input class="inp" id="admin-pw" type="password" placeholder="비밀번호" autocomplete="off" style="text-align:center" />
+        <div id="admin-err" style="color:var(--coral-deep);font-size:.85rem;min-height:18px;margin:8px 0"></div>
+        <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center">확인</button>
+      </form>
+
+      <div id="admin-list" class="hidden">
+        <div class="sumrow" style="display:flex;gap:12px;margin-bottom:14px">
+          <div class="stat" style="flex:1"><div class="num" id="sum-count">-</div><div class="cap">추천 게임</div></div>
+          <div class="stat" style="flex:1"><div class="num coral" id="sum-sel">-</div><div class="cap">⭐ 선정</div></div>
+        </div>
+        <div class="toolbar">
+          <button class="btn" id="btn-csv">⬇️ CSV 다운로드</button>
+          <button class="btn" id="btn-refresh">🔄 새로고침</button>
+          <button class="btn" id="btn-logout">로그아웃</button>
+        </div>
+        <p class="cap" style="margin:0 0 10px">⭐ 버튼으로 채택할 게임을 선정하세요.</p>
+        <div id="cards"></div>
+      </div>
+    </section>
+  </main>
+
+  <datalist id="namelist"></datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    const KEY = "games";
+    const ADMIN_HASH = "d3781c68"; // 5512
+    const adminHash = s => { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); };
+    const esc = UI.esc, $ = id => document.getElementById(id);
+
+    /* 인사DB 연동 (이름→소속 + 사진) */
+    const PHOTO_BASE = "https://firstoa-hr.fly.dev/api/photos/";
+    let attMap = {}, attPhoto = {};
+    function avatarHtml(name, size) {
+      const s = size || 34, init = esc((name || "?").slice(0, 1)), photo = attPhoto[name];
+      let h = `<span class="avatar-fallback" style="width:${s}px;height:${s}px;padding:0;position:relative;overflow:hidden;flex:0 0 auto">${init}`;
+      if (photo) h += `<img src="${PHOTO_BASE + photo}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()" />`;
+      return h + `</span>`;
+    }
+    (async () => {
+      try {
+        const att = await STORE.list("attendees");
+        att.forEach(a => { attMap[a.name] = a.dept; attPhoto[a.name] = a.photo || ""; });
+        $("namelist").innerHTML = att.map(a => `<option value="${esc(a.name)}"></option>`).join("");
+      } catch (e) {}
+    })();
+    $("f-name").addEventListener("input", () => {
+      const d = attMap[$("f-name").value.trim()];
+      if (d && !$("f-team").value.trim()) $("f-team").value = d;
+    });
+
+    /* 탭 */
+    $("tab-apply").onclick = () => switchTab("apply");
+    $("tab-admin").onclick = () => switchTab("admin");
+    function switchTab(t) {
+      $("tab-apply").classList.toggle("active", t === "apply");
+      $("tab-admin").classList.toggle("active", t === "admin");
+      $("panel-apply").classList.toggle("hidden", t !== "apply");
+      $("panel-admin").classList.toggle("hidden", t !== "admin");
+      if (t === "admin") enterAdmin();
+    }
+
+    /* 추천 제출 */
+    function collect() {
+      return {
+        name: $("f-name").value.trim(), team: $("f-team").value.trim(),
+        game: $("f-game").value.trim(), how: $("f-how").value.trim(),
+        players: $("f-players").value.trim(), items: $("f-items").value.trim(),
+        time: $("f-time").value.trim(), memo: $("f-memo").value.trim(),
+      };
+    }
+    function validate(d) {
+      const checks = [[!d.name, "f-name", "이름"], [!d.team, "f-team", "소속"], [!d.game, "f-game", "게임 이름"], [!d.how, "f-how", "게임 방법"]];
+      const miss = [];
+      checks.forEach(([bad, id, label]) => { $(id).closest(".field").classList.toggle("invalid", bad); if (bad) miss.push(label); });
+      return miss;
+    }
+    $("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const d = collect(), miss = validate(d), errBox = $("submit-err");
+      if (miss.length) { errBox.textContent = "필수 항목을 확인하세요: " + miss.join(", "); errBox.classList.remove("hidden"); document.querySelector(".field.invalid")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+      errBox.classList.add("hidden");
+      const btn = $("btn-submit"), old = btn.textContent; btn.disabled = true; btn.textContent = "전송 중… ⏳";
+      try {
+        const latest = await STORE.getSetting(KEY, []);
+        const list = Array.isArray(latest) ? latest : [];
+        if (list.some(x => x.name === d.name && x.game === d.game)) { errBox.textContent = "이미 같은 게임을 추천하셨어요."; errBox.classList.remove("hidden"); return; }
+        list.push({ id: "G" + String(list.length + 1).padStart(3, "0"), ...d, selected: false, ts: new Date().toISOString() });
+        await STORE.setSetting(KEY, list);
+        $("form").classList.add("hidden"); $("done").classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (err) { errBox.textContent = "전송 오류: 네트워크를 확인하고 다시 시도해 주세요."; errBox.classList.remove("hidden"); }
+      finally { btn.disabled = false; btn.textContent = old; }
+    });
+    $("btn-again").onclick = () => {
+      $("form").reset();
+      document.querySelectorAll(".field.invalid").forEach(f => f.classList.remove("invalid"));
+      $("done").classList.add("hidden"); $("form").classList.remove("hidden");
+    };
+
+    /* 관리자 현황 */
+    const SS_KEY = "game-admin-ok";
+    let currentList = [];
+    function enterAdmin() { if (sessionStorage.getItem(SS_KEY) === "1") loadList(); }
+    $("admin-gate").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (adminHash($("admin-pw").value.trim()) === ADMIN_HASH) { sessionStorage.setItem(SS_KEY, "1"); $("admin-err").textContent = ""; loadList(); }
+      else { $("admin-err").textContent = "비밀번호가 올바르지 않습니다"; $("admin-pw").value = ""; }
+    });
+    async function loadList() {
+      $("admin-gate").classList.add("hidden"); $("admin-list").classList.remove("hidden");
+      const l = await STORE.getSetting(KEY, []); currentList = Array.isArray(l) ? l : []; renderList();
+    }
+    function renderList() {
+      $("sum-count").textContent = currentList.length + "개";
+      $("sum-sel").textContent = currentList.filter(x => x.selected).length + "개";
+      $("cards").innerHTML = currentList.map((x, i) => `<div class="g-card ${x.selected ? "on" : ""}">
+        <div class="top">
+          <div class="gname">🎲 ${esc(x.game)} ${x.selected ? '<span class="badge badge-teal">⭐ 선정</span>' : ""}</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-icon ${x.selected ? "btn-primary" : ""}" data-sel="${i}">${x.selected ? "선정취소" : "⭐ 선정"}</button>
+            <button class="btn btn-icon btn-danger" data-del="${i}">🗑</button>
+          </div>
+        </div>
+        <div class="meta">${esc(x.how)}</div>
+        <div class="meta">👥 ${esc(x.players) || "-"} · 🧰 ${esc(x.items) || "-"} · ⏱ ${esc(x.time) || "-"}</div>
+        ${x.memo ? `<div class="meta">💬 ${esc(x.memo)}</div>` : ""}
+        <div class="who">${avatarHtml(x.name, 30)}<span style="font-size:.85rem;color:var(--muted)">추천: ${esc(x.name)} · ${esc(x.team)}</span></div>
+      </div>`).join("") || '<div class="cap" style="text-align:center;padding:20px">아직 추천이 없습니다.</div>';
+      $("cards").querySelectorAll("[data-sel]").forEach(b => b.addEventListener("click", () => toggleSel(+b.dataset.sel)));
+      $("cards").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => delItem(+b.dataset.del)));
+    }
+    async function toggleSel(i) {
+      const t = currentList[i]; if (!t) return;
+      const l = await STORE.getSetting(KEY, []); const arr = Array.isArray(l) ? l : [];
+      const idx = arr.findIndex(x => x.name === t.name && x.game === t.game);
+      if (idx >= 0) { arr[idx].selected = !arr[idx].selected; await STORE.setSetting(KEY, arr); currentList = arr; renderList(); UI.toast(arr[idx].selected ? "선정됨 ⭐" : "선정 취소"); }
+    }
+    async function delItem(i) {
+      const t = currentList[i]; if (!t) return;
+      if (!confirm(`"${t.game}" 추천을 삭제할까요?`)) return;
+      const l = await STORE.getSetting(KEY, []);
+      const nl = (Array.isArray(l) ? l : []).filter(x => !(x.name === t.name && x.game === t.game));
+      await STORE.setSetting(KEY, nl); currentList = nl; renderList(); UI.toast("삭제됨");
+    }
+    $("btn-refresh").onclick = loadList;
+    $("btn-logout").onclick = () => { sessionStorage.removeItem(SS_KEY); $("admin-list").classList.add("hidden"); $("admin-gate").classList.remove("hidden"); $("admin-pw").value = ""; $("admin-err").textContent = ""; };
+    $("btn-csv").onclick = () => {
+      const cols = ["번호","선정","게임이름","게임방법","필요인원","준비물","소요시간","추천자","소속","한마디","추천시각"];
+      const rows = currentList.map(x => [x.id, x.selected ? "O" : "", x.game, x.how, x.players, x.items, x.time, x.name, x.team, x.memo, x.ts]);
+      const csv = [cols, ...rows].map(r => r.map(c => `"${String(c == null ? "" : c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "게임추천_목록.csv"; a.click(); URL.revokeObjectURL(a.href);
+    };
+  </script>
+</body>
+</html>

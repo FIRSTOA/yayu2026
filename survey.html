@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>답사 일정표 · 2026 퍼스트전산 여름 야유회</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .pbanner { width: 100%; height: auto; display: block; border-radius: 18px; box-shadow: var(--shadow); }
+    .ptitle { text-align: center; font-weight: 800; font-size: 1.2rem; color: var(--teal-deep); margin: 16px 0 2px; }
+    .pchips { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 4px; }
+    .pchip { background: var(--cream); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px; font-size: 0.9rem; box-shadow: var(--shadow); }
+    .pchip b { color: var(--ink); }
+    .pchip .lb { color: var(--muted); margin-right: 4px; }
+    .psec { background: var(--cream); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; margin-top: 16px; }
+    .phead { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 1.08rem; margin-bottom: 12px; }
+    .pnum { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-size: 0.82rem; font-weight: 800; background: var(--coral); }
+    .pnum.teal { background: var(--teal); }
+    #capture { background: linear-gradient(160deg,#fffaf1,#f7efe1); padding: 22px; border-radius: 20px; }
+    .sv-box { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .sv-head, .sv-row { display: flex; align-items: stretch; }
+    .sv-head > div { padding: 9px 12px; background: var(--teal-wash); color: var(--teal-deep); font-weight: 700; font-size: 0.8rem; }
+    .sv-row + .sv-row { border-top: 1px solid var(--line); }
+    .sv-row > div { padding: 10px 12px; font-size: 0.88rem; display: flex; align-items: center; min-width: 0; }
+    .sc-time { flex: 0 0 150px; font-weight: 700; color: var(--teal-deep); white-space: nowrap; }
+    .sc-act { flex: 1; font-weight: 700; }
+    .sc-note { flex: 0 0 30%; color: var(--muted); font-size: 0.8rem; }
+    .memo-view { white-space: pre-wrap; font-size: 0.92rem; line-height: 1.65; color: var(--ink); min-height: 24px; }
+    .lbl { display: block; margin-bottom: 6px; font-weight: 800; color: var(--teal-deep); font-size: 0.9rem; }
+    .sv-note { white-space: nowrap; color: var(--muted); font-size: 0.85rem; }
+
+    /* ===== 모바일 최적화 ===== */
+    @media (max-width: 620px) {
+      #capture { padding: 12px; border-radius: 14px; }
+      .psec { padding: 14px; }
+      .ptitle { font-size: 1.05rem; }
+      .pchips { gap: 8px; }
+      .pchip { font-size: 0.82rem; padding: 7px 11px; }
+      table th, table td { padding: 8px 8px; font-size: 0.85rem; }
+      .sv-note { white-space: normal; }        /* 모바일에선 비고 줄바꿈 → 안 잘림 */
+      .memo-view { font-size: 0.88rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-brand" href="index.html"><span class="wave">🌊</span> 퍼스트전산 여름 야유회</a>
+      <div class="nav-links">
+        <a href="index.html">홈</a>
+        <a href="schedule.html">일정표</a>
+        <a href="survey.html" class="active">답사</a>
+        <a href="attendees.html">참석자</a>
+        <a href="budget.html">예산</a>
+        <a href="checklist.html">준비물</a>
+        <a href="wakeboard.html">웨이크보드</a>
+        <a href="talent.html">장기자랑</a>
+        <a href="game.html">게임</a>
+        <a href="draw.html">야유회 레크레이션</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span id="mode"></span>
+        <button class="btn" id="btn-edit">✏️ 편집 모드</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="btn-jpg">📷 JPEG로 저장</button>
+        <button class="btn" id="btn-copy">📋 이미지 복사</button>
+      </div>
+    </div>
+
+    <div id="capture">
+      <img class="pbanner" src="assets/banner.png" alt="2026 퍼스트전산 여름 야유회" crossorigin="anonymous" />
+      <div class="ptitle">🧭 답사 (사전 점검) 일정표</div>
+      <div class="pchips" id="chips"></div>
+
+      <div class="psec">
+        <div class="phead"><span class="pnum">1</span> 답사 일정</div>
+        <div id="sched"></div>
+      </div>
+
+      <div class="psec">
+        <div class="phead"><span class="pnum teal">2</span> 점검 메모</div>
+        <div id="memo"></div>
+      </div>
+    </div>
+
+    <p class="foot">편집 모드로 입력 → <strong>📷 JPEG로 저장</strong>하면 카톡·문서에 붙여넣을 수 있어요 · 입력은 클라우드 자동 저장</p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    const esc = UI.esc;
+    document.getElementById("mode").innerHTML = UI.modePill();
+    let editMode = false, survey = null;
+
+    function upcomingSaturday() {
+      const d = new Date();
+      const diff = (6 - d.getDay() + 7) % 7;
+      d.setDate(d.getDate() + diff);
+      const p = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} (토)`;
+    }
+    const DEFAULT = {
+      date: upcomingSaturday(),
+      place: "원수상레저 (강원 춘천시 남면 박암관천길 93-54)",
+      who: "",
+      memo: "",
+      rows: [
+        { time: "09:00", act: "회사 출발", note: "" },
+        { time: "", act: "답사 장소 도착", note: "" },
+        { time: "", act: "현장 점검 (숙소·물놀이장·바비큐장)", note: "" },
+        { time: "", act: "식사 장소 확인 / 예약 상담", note: "" },
+        { time: "", act: "복귀", note: "" },
+      ],
+    };
+    const save = () => STORE.setSetting("survey", survey);
+
+    async function load() {
+      survey = await STORE.getSetting("survey", null);
+      if (!survey) { survey = DEFAULT; await save(); }
+      if (!Array.isArray(survey.rows)) survey.rows = [];
+      renderAll();
+    }
+    function renderAll() { renderChips(); renderSched(); renderMemo(); }
+
+    /* 개요 칩 */
+    function renderChips() {
+      const host = document.getElementById("chips");
+      if (editMode) {
+        host.innerHTML = `<div class="card" style="width:100%">
+          <div class="grid cols-2" style="gap:14px">
+            <div><label class="lbl">📅 날짜</label><input class="inp" id="f-date" value="${esc(survey.date || "")}" placeholder="예: 2026-07-11 (토)"/></div>
+            <div><label class="lbl">📍 장소</label><input class="inp" id="f-place" value="${esc(survey.place || "")}" placeholder="장소"/></div>
+          </div>
+          <div style="margin-top:12px"><label class="lbl">👥 참석자 / 차량</label><input class="inp" id="f-who" value="${esc(survey.who || "")}" placeholder="예: 이의수, 현호진 / 회사 차량 1대"/></div>
+        </div>`;
+        [["f-date", "date"], ["f-place", "place"], ["f-who", "who"]].forEach(([id, key]) =>
+          document.getElementById(id).addEventListener("change", ev => { survey[key] = ev.target.value; save(); UI.toast("저장됨"); }));
+      } else {
+        const chips = [
+          { lb: "📅 날짜", v: survey.date },
+          { lb: "📍 장소", v: survey.place },
+          { lb: "👥 참석/차량", v: survey.who || "-" },
+        ];
+        host.innerHTML = chips.map(c => `<div class="pchip"><span class="lb">${c.lb}</span><b>${esc(c.v || "-")}</b></div>`).join("");
+      }
+    }
+
+    /* 답사 일정 */
+    function renderSched() {
+      const host = document.getElementById("sched");
+      if (editMode) {
+        host.innerHTML = `<div class="table-wrap"><table>
+          <thead><tr><th style="width:150px">시간</th><th>내용</th><th style="width:28%">비고</th><th class="edit-col">삭제</th></tr></thead>
+          <tbody>${survey.rows.map((r, i) => `<tr data-i="${i}">
+            <td><input class="inp" data-f="time" value="${esc(r.time || "")}" placeholder="09:00~10:00"/></td>
+            <td><input class="inp" data-f="act" value="${esc(r.act || "")}" placeholder="일정 내용"/></td>
+            <td><input class="inp" data-f="note" value="${esc(r.note || "")}" placeholder="비고"/></td>
+            <td class="edit-col"><button class="btn btn-icon btn-danger" data-del="${i}">🗑</button></td></tr>`).join("")}</tbody>
+        </table></div>
+        <button class="btn btn-icon" style="margin-top:10px" id="add-row">＋ 일정 추가</button>`;
+        host.querySelectorAll("tr[data-i]").forEach(tr => {
+          const i = +tr.dataset.i;
+          tr.querySelectorAll("[data-f]").forEach(inp => inp.addEventListener("change", () => { survey.rows[i][inp.dataset.f] = inp.value; save(); UI.toast("저장됨"); }));
+          tr.querySelector("[data-del]").addEventListener("click", () => { if (confirm("이 줄을 삭제할까요?")) { survey.rows.splice(i, 1); save(); renderSched(); } });
+        });
+        document.getElementById("add-row").addEventListener("click", () => { survey.rows.push({ time: "", act: "", note: "" }); save(); renderSched(); });
+      } else {
+        const rows = survey.rows.filter(r => (r.time || r.act || r.note)).map(r => `<tr>
+          <td class="t-time">${esc(r.time || "")}</td>
+          <td><strong>${esc(r.act || "")}</strong></td>
+          <td class="sv-note">${esc(r.note || "")}</td></tr>`).join("");
+        host.innerHTML = `<div class="table-wrap"><table>
+          <thead><tr><th style="width:150px">시간</th><th>내용</th><th>비고</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="3" style="color:var(--muted)">일정을 입력하세요 (편집 모드)</td></tr>'}</tbody>
+        </table></div>`;
+      }
+    }
+
+    /* 점검 메모 */
+    function renderMemo() {
+      const host = document.getElementById("memo");
+      if (editMode) {
+        host.innerHTML = `<textarea id="f-memo" class="inp" style="width:100%;min-height:130px;resize:vertical;font-family:inherit" placeholder="주차 가능 대수, 물놀이장 상태, 바비큐장 위치, 화장실·샤워실, 식당 예약, 비상연락 등">${esc(survey.memo || "")}</textarea>`;
+        document.getElementById("f-memo").addEventListener("change", ev => { survey.memo = ev.target.value; save(); UI.toast("저장됨"); });
+      } else {
+        host.innerHTML = `<div class="memo-view">${survey.memo ? esc(survey.memo) : '<span style="color:var(--muted)">메모 없음</span>'}</div>`;
+      }
+    }
+
+    document.getElementById("btn-edit").addEventListener("click", ev => {
+      editMode = !editMode;
+      ev.target.classList.toggle("btn-primary", editMode);
+      ev.target.textContent = editMode ? "✓ 편집 끝내기" : "✏️ 편집 모드";
+      renderAll();
+    });
+
+    /* 이미지 내보내기 */
+    async function capture() {
+      const wasEdit = editMode;
+      if (wasEdit) { editMode = false; renderAll(); }
+      const cap = document.getElementById("capture");
+      const prevW = cap.style.width, prevMax = cap.style.maxWidth;
+      cap.style.maxWidth = "none"; cap.style.width = "1240px";
+      await new Promise(r => setTimeout(r, 80));
+      const canvas = await html2canvas(cap, { scale: 2, backgroundColor: "#faf5ea", useCORS: true, logging: false, windowWidth: 1100 });
+      cap.style.width = prevW; cap.style.maxWidth = prevMax;
+      if (wasEdit) { editMode = true; renderAll(); }
+      return canvas;
+    }
+    document.getElementById("btn-jpg").addEventListener("click", async ev => {
+      const btn = ev.target, old = btn.textContent; btn.textContent = "만드는 중…"; btn.disabled = true;
+      try { const c = await capture(); const a = document.createElement("a"); a.href = c.toDataURL("image/jpeg", 0.95); a.download = "답사_일정표.jpg"; a.click(); UI.toast("JPEG 저장됨"); }
+      catch (err) { alert("저장 실패: " + err.message); } finally { btn.textContent = old; btn.disabled = false; }
+    });
+    document.getElementById("btn-copy").addEventListener("click", async ev => {
+      const btn = ev.target, old = btn.textContent; btn.textContent = "복사 중…"; btn.disabled = true;
+      try {
+        const c = await capture();
+        c.toBlob(async blob => {
+          try { await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]); UI.toast("클립보드에 복사됨 — Ctrl+V"); }
+          catch (e2) { const a = document.createElement("a"); a.href = c.toDataURL("image/jpeg", 0.95); a.download = "답사_일정표.jpg"; a.click(); UI.toast("복사 미지원 → 파일 저장"); }
+          btn.textContent = old; btn.disabled = false;
+        }, "image/png");
+      } catch (err) { alert("복사 실패: " + err.message); btn.textContent = old; btn.disabled = false; }
+    });
+
+    load();
+  </script>
+</body>
+</html>

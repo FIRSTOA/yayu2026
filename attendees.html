@@ -13,9 +13,14 @@
       <div class="nav-links">
         <a href="index.html">홈</a>
         <a href="schedule.html">일정표</a>
+        <a href="survey.html">답사</a>
         <a href="attendees.html" class="active">참석자</a>
         <a href="budget.html">예산</a>
         <a href="checklist.html">준비물</a>
+        <a href="wakeboard.html">웨이크보드</a>
+        <a href="talent.html">장기자랑</a>
+        <a href="game.html">게임</a>
+        <a href="draw.html">야유회 레크레이션</a>
       </div>
     </div>
   </nav>
@@ -43,6 +48,7 @@
       <button class="btn btn-primary" id="btn-add">＋ 참석자 추가</button>
       <button class="btn" id="btn-hr" style="display:none">👥 인사DB에서 불러오기</button>
       <button class="btn" id="btn-edit">✏️ 편집 모드</button>
+      <button class="btn" id="btn-excel">⬇️ 엑셀 다운로드</button>
     </div>
 
     <!-- 인사DB 불러오기 패널 -->
@@ -108,6 +114,7 @@
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/hr.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
     const D = window.YAYU, T = "attendees";
     let rows = [], dept = "전체", q = "", editMode = false, view = "attend"; // attend | absent | bus | sep
@@ -126,7 +133,10 @@
       // data.js 기본 부서 순서를 우선 유지
       const ordered = D.deptOrder.filter(d => set.includes(d));
       set.forEach(d => { if (!ordered.includes(d)) ordered.push(d); });
-      return ordered;
+      // "대표님"이 들어간 부서는 맨 위로
+      const boss = ordered.filter(d => d.includes("대표님"));
+      const rest = ordered.filter(d => !d.includes("대표님"));
+      return [...boss, ...rest];
     }
 
     async function load() {
@@ -192,6 +202,13 @@
         else if (view === "bus") okV = isAttend(a) && a.bus;
         else okV = isAttend(a) && !a.bus;   // sep
         return okD && okQ && okV;
+      });
+      // 같은 부서끼리 묶어서 표시 (추가 순서와 무관하게 부서 순서로 정렬)
+      const order = deptList();
+      list.sort((a, b) => {
+        const da = order.indexOf(a.dept), db = order.indexOf(b.dept);
+        if (da !== db) return (da < 0 ? 999 : da) - (db < 0 ? 999 : db);
+        return (a.sort ?? 0) - (b.sort ?? 0);
       });
       document.getElementById("count").textContent = `${list.length}명`;
       document.querySelectorAll(".edit-only").forEach(e => e.classList.toggle("hidden", !editMode));
@@ -285,6 +302,29 @@
       e.target.classList.toggle("btn-primary", editMode);
       e.target.textContent = editMode ? "✓ 편집 끝내기" : "✏️ 편집 모드";
       render();
+    });
+
+    /* 엑셀(.xlsx) 다운로드 — 현재 명단 전체 (부서 순 정렬) */
+    document.getElementById("btn-excel").addEventListener("click", () => {
+      const order = deptList();
+      const sorted = [...rows].sort((a, b) => {
+        const da = order.indexOf(a.dept), db = order.indexOf(b.dept);
+        if (da !== db) return (da < 0 ? 999 : da) - (db < 0 ? 999 : db);
+        return (a.sort ?? 0) - (b.sort ?? 0);
+      });
+      const data = sorted.map((a, i) => ({
+        번호: i + 1, 부서: a.dept, 이름: a.name, 직급: a.rank,
+        참석여부: (a.attend === false) ? "미참석" : "참석",
+        버스: (a.attend === false) ? "" : (a.bus ? "승차" : "따로합류"),
+        특이사항: a.note || "",
+      }));
+      const ws = XLSX.utils.json_to_sheet(data, { header: ["번호", "부서", "이름", "직급", "참석여부", "버스", "특이사항"] });
+      ws["!cols"] = [{ wch: 5 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 9 }, { wch: 9 }, { wch: 22 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "참석자");
+      const att = rows.filter(a => a.attend !== false).length;
+      XLSX.writeFile(wb, `야유회_참석자명단_${att}명.xlsx`);
+      UI.toast("엑셀 파일을 내려받았어요");
     });
 
     /* 추가 폼 */
