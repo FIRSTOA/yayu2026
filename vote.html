@@ -73,7 +73,7 @@
       <h1>🎤 장기자랑 투표</h1>
       <p>가장 멋졌던 무대에 한 표! <span style="color:var(--coral-deep)">(기기당 1표)</span></p>
     </div>
-    <div class="cfg-warn" id="cfg-warn">⚠️ 투표 시스템(Firebase) 설정 전이에요. 진행자에게 문의해 주세요.</div>
+    <div class="cfg-warn" id="cfg-warn">⚠️ 투표 시스템 준비 중이에요. 진행자에게 문의해 주세요.</div>
     <div class="lock-banner" id="lock-banner">✅ 투표 완료! 이 기기에서는 다시 투표할 수 없어요</div>
     <div class="vgrid" id="vgrid"></div>
     <p class="vfoot">한 번 투표하면 변경할 수 없어요 · 정정이 필요하면 진행자에게 말씀해 주세요</p>
@@ -108,8 +108,8 @@
   </div>
   <canvas id="confetti"></canvas>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
   <script>
     /* ============================================================
        ① 참가자 명단 — 행사 당일 이름만 바꾸면 됩니다 (순서=투표 버튼 순서)
@@ -126,30 +126,21 @@
     /* ② 관리자 비밀번호 */
     const ADMIN_PW = "1234";
 
-    /* ③ Firebase 설정 — 콘솔에서 복사한 값을 그대로 붙여넣으세요 (아래 안내 참고) */
-    const FIREBASE_CONFIG = {
-      apiKey: "여기에_APIKEY",
-      authDomain: "여기에.firebaseapp.com",
-      databaseURL: "https://여기에-default-rtdb.firebasedatabase.app",
-      projectId: "여기에_PROJECTID",
-      storageBucket: "여기에.appspot.com",
-      messagingSenderId: "여기에",
-      appId: "여기에"
-    };
-    // ⚠️ 기기별 1표 방지는 localStorage 기반 — 시크릿모드/기기변경으로 우회 가능하지만 사내 행사용으로는 충분합니다.
+    /* 저장소: 이 앱이 이미 쓰는 Supabase(yayu-2026)를 그대로 재사용 (js/config.js).
+       투표는 talent_votes 테이블에 한 표당 한 줄 insert → 동시 투표에도 유실 없음.
+       ⚠️ 최초 1회 Supabase SQL 편집기에서 테이블/정책 생성 필요 (진행자 안내 참고).
+       기기별 1표 방지는 localStorage (시크릿모드 우회 가능하나 사내 행사용으론 충분). */
     const VOTE_KEY = "talent_voted_2026";
+    const TABLE = "talent_votes";
 
     const $ = id => document.getElementById(id);
     const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-    /* ---------- Firebase 초기화 (설정 전이면 안전하게 건너뜀) ---------- */
-    let db = null, configured = false, results = [];
-    function isConfigured() { return FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.databaseURL && !FIREBASE_CONFIG.apiKey.includes("여기에"); }
-    if (isConfigured()) {
-      try { firebase.initializeApp(FIREBASE_CONFIG); db = firebase.database(); configured = true; }
-      catch (e) { console.error("Firebase init 실패", e); }
-    }
-    if (!configured) $("cfg-warn").classList.add("show");
+    /* ---------- Supabase 클라이언트 ---------- */
+    const cfg = window.SUPABASE_CONFIG || {};
+    const client = (window.supabase && cfg.url && cfg.key) ? window.supabase.createClient(cfg.url, cfg.key) : null;
+    let results = PARTICIPANTS.map(n => ({ name: n, votes: 0 }));
+    let tableReady = false;
 
     /* ---------- 투표 화면 ---------- */
     const voted = () => !!localStorage.getItem(VOTE_KEY);
@@ -164,25 +155,33 @@
       $("lock-banner").classList.add("show");
       $("vgrid").querySelectorAll("button").forEach(b => b.disabled = true);
     }
-    function castVote(i) {
+    async function castVote(i) {
       if (voted()) { $("lock-banner").classList.add("show"); return; }
-      if (!configured) { alert("아직 투표 시스템 설정(Firebase) 전이에요. 진행자에게 문의해 주세요."); return; }
+      if (!client || !tableReady) { alert("아직 투표 준비 중이에요. 진행자에게 문의해 주세요."); return; }
       const btn = $("vgrid").querySelector(`[data-i="${i}"]`);
       if (btn) btn.disabled = true;
-      // votes/{index} 를 원자적으로 +1 (이름 대신 인덱스 키 → 한글 이름의 특수문자 제약 회피)
-      db.ref("votes/" + i).set(firebase.database.ServerValue.increment(1))
-        .then(() => { lockVoting(); })
-        .catch(() => { alert("투표 전송 실패 — 네트워크를 확인하고 다시 시도해 주세요."); if (btn) btn.disabled = false; });
+      const { error } = await client.from(TABLE).insert({ choice: i });
+      if (error) { alert("투표 전송 실패 — 네트워크를 확인하고 다시 시도해 주세요."); if (btn) btn.disabled = false; return; }
+      lockVoting();
     }
 
-    /* ---------- 관리자 결과 (실시간) ---------- */
-    function startResultsListener() {
-      if (!configured) return;
-      db.ref("votes").on("value", snap => {
-        const data = snap.val() || {};
-        results = PARTICIPANTS.map((name, i) => ({ name, votes: (data && data[i]) || 0 }));
-        if ($("admin-screen").classList.contains("show")) renderResults();
-      });
+    /* ---------- 결과 집계 (실시간) ---------- */
+    async function fetchResults() {
+      if (!client) return { error: "no-client" };
+      const { data, error } = await client.from(TABLE).select("choice");
+      if (error) return { error };
+      const counts = {};
+      (data || []).forEach(r => { counts[r.choice] = (counts[r.choice] || 0) + 1; });
+      results = PARTICIPANTS.map((name, i) => ({ name, votes: counts[i] || 0 }));
+      if ($("admin-screen").classList.contains("show")) renderResults();
+      return {};
+    }
+    let refetchT = null;
+    function scheduleRefetch() { clearTimeout(refetchT); refetchT = setTimeout(fetchResults, 250); }
+    function subscribeRealtime() {
+      client.channel("talent_votes_rt")
+        .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, () => scheduleRefetch())
+        .subscribe();
     }
     function renderResults() {
       const sorted = results.slice().sort((a, b) => b.votes - a.votes);
@@ -198,20 +197,23 @@
           <span class="res-votes">${r.votes}표</span></div>`;
       }).join("");
     }
-    function openAdmin() {
+    async function openAdmin() {
       const pw = prompt("관리자 비밀번호를 입력하세요");
       if (pw === null) return;
       if (pw !== ADMIN_PW) { alert("비밀번호가 틀렸습니다."); return; }
       $("vote-screen").style.display = "none";
       $("admin-screen").classList.add("show");
-      if (!configured) { $("res-list").innerHTML = '<p class="cap" style="color:var(--muted)">⚠️ Firebase 설정 후 결과가 표시됩니다.</p>'; return; }
+      const { error } = await fetchResults();
+      if (error) { $("res-list").innerHTML = '<p class="cap" style="color:var(--muted)">⚠️ 투표 테이블이 아직 없어요. Supabase에서 talent_votes 테이블을 만들어 주세요.</p>'; return; }
       renderResults();
     }
     function closeAdmin() { $("admin-screen").classList.remove("show"); $("vote-screen").style.display = "block"; }
-    function resetVotes() {
-      if (!configured) { alert("Firebase 설정 후 사용 가능합니다."); return; }
+    async function resetVotes() {
+      if (!client) return;
       if (!confirm("모든 투표를 0으로 초기화할까요? (되돌릴 수 없음)")) return;
-      db.ref("votes").remove().then(() => alert("초기화되었습니다."));
+      const { error } = await client.from(TABLE).delete().gt("id", 0);
+      if (error) { alert("초기화 실패: " + error.message); return; }
+      fetchResults(); alert("초기화되었습니다.");
     }
 
     /* ---------- 🥁 발표 모드 ---------- */
@@ -260,10 +262,9 @@
       })();
     }
     function enterPresent() {
-      if (!configured || !results.length) { alert("결과 데이터가 없습니다."); return; }
+      if (!results.length) { alert("결과 데이터가 없습니다."); return; }
       ensureAudio();
-      // 득표순 상위 3 → [3등, 2등, 1등] 순으로 공개
-      order = results.slice().sort((a, b) => b.votes - a.votes).slice(0, 3).reverse();
+      order = results.slice().sort((a, b) => b.votes - a.votes).slice(0, 3).reverse(); // [3등, 2등, 1등]
       if (!order.length) { alert("투표 데이터가 없습니다."); return; }
       step = 0;
       $("present-screen").classList.add("show");
@@ -271,7 +272,7 @@
     }
     function exitPresent() { $("present-screen").classList.remove("show"); $("pv-reveal").classList.remove("show"); }
     function renderStep() {
-      const rankNo = order.length - step; // step0 → (예: 3등)
+      const rankNo = order.length - step;
       pvPhase = "ready";
       $("pv-rank").textContent = ["🥇 1등 발표", "🥈 2등 발표", "🥉 3등 발표"][rankNo - 1] || (rankNo + "등 발표");
       $("pv-drum").textContent = "";
@@ -303,7 +304,7 @@
       }
     }
 
-    /* ---------- 배선 ---------- */
+    /* ---------- 배선 & 초기화 ---------- */
     $("admin-btn").onclick = openAdmin;
     $("btn-back").onclick = closeAdmin;
     $("btn-reset").onclick = resetVotes;
@@ -313,7 +314,12 @@
     window.addEventListener("resize", () => { const cv = $("confetti"); if (cv.classList.contains("show")) { cv.width = innerWidth; cv.height = innerHeight; } });
 
     renderVoteButtons();
-    startResultsListener();
+    (async function init() {
+      if (!client) { $("cfg-warn").classList.add("show"); return; }
+      const { error } = await fetchResults();
+      if (error) { $("cfg-warn").classList.add("show"); }   // 테이블 아직 없음
+      else { tableReady = true; subscribeRealtime(); }
+    })();
   </script>
 </body>
 </html>
