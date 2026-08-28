@@ -47,6 +47,10 @@
     .btn-present { background: #16202B; color: #F5C542; }
     .btn-back { background: rgba(0,0,0,0.08); color: var(--ink); }
     .btn-reset { background: #fdecea; color: #c0392b; }
+    .add-part { display: flex; gap: 8px; margin: 14px 0 4px; }
+    .add-part input { flex: 1; min-width: 0; height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; font-family: inherit; font-size: 1rem; }
+    .add-part button { height: 46px; padding: 0 16px; border: none; border-radius: 10px; background: var(--teal); color: #fff; font-family: inherit; font-weight: 800; cursor: pointer; white-space: nowrap; }
+    .add-hint { color: var(--muted); font-size: 0.8rem; margin: 2px 0 10px; }
 
     /* ===== 발표 모드 (빔프로젝터) ===== */
     #present-screen { position: fixed; inset: 0; background: #16202B; color: #fff; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 9000; padding: 20px; }
@@ -86,6 +90,11 @@
       <span class="cap" style="color:var(--muted);font-weight:700">🔴 실시간</span>
     </div>
     <p class="adm-total" id="adm-total">총 0표</p>
+    <div class="add-part">
+      <input id="new-part" placeholder="즉석 참가자 이름 (예: 홍길동 (노래))" autocomplete="off" />
+      <button id="btn-add-part">＋ 참가자 추가</button>
+    </div>
+    <p class="add-hint">추가하면 직원들 폰에도 즉시 새 버튼이 생겨요 · 기존 표는 그대로 유지됩니다</p>
     <div id="res-list"></div>
     <div class="adm-actions">
       <button class="btn-present" id="btn-present">🥁 발표 모드</button>
@@ -114,10 +123,13 @@
     /* ============================================================
        ① 참가자 명단 — 행사 당일 이름만 바꾸면 됩니다 (순서=투표 버튼 순서)
        ============================================================ */
-    const PARTICIPANTS = [
+    /* 기본 참가자 (신청자). 관리자가 즉석 추가하면 Supabase settings 에 저장되어 모든 폰에 반영됨. */
+    const DEFAULTS = [
       "권태혁 (댄스)",
       "신정훈 (마술)",
     ];
+    const LIST_KEY = "talent_participants";
+    let participants = DEFAULTS.slice();
 
     /* ② 관리자 비밀번호 */
     const ADMIN_PW = "1943";
@@ -137,12 +149,12 @@
     /* ---------- Supabase 클라이언트 ---------- */
     const cfg = window.SUPABASE_CONFIG || {};
     const client = (window.supabase && cfg.url && cfg.key) ? window.supabase.createClient(cfg.url, cfg.key) : null;
-    let results = PARTICIPANTS.map(n => ({ name: n, votes: 0 }));
+    let results = participants.map(n => ({ name: n, votes: 0 }));
 
     /* ---------- 투표 화면 ---------- */
     const voted = () => !!localStorage.getItem(VOTE_KEY);
     function renderVoteButtons() {
-      $("vgrid").innerHTML = PARTICIPANTS.map((n, i) =>
+      $("vgrid").innerHTML = participants.map((n, i) =>
         `<button class="vbtn" data-i="${i}" ${voted() ? "disabled" : ""}>${esc(n)}</button>`).join("");
       $("vgrid").querySelectorAll("[data-i]").forEach(b => b.onclick = () => castVote(+b.dataset.i));
       if (voted()) $("lock-banner").classList.add("show");
@@ -162,6 +174,29 @@
       lockVoting();
     }
 
+    /* ---------- 참가자 명단 (Supabase settings 공유) ---------- */
+    async function loadParticipants() {
+      if (!client) return;
+      const { data, error } = await client.from(SETTINGS).select("value").eq("key", LIST_KEY).maybeSingle();
+      participants = (!error && data && Array.isArray(data.value) && data.value.length) ? data.value : DEFAULTS.slice();
+      results = participants.map(n => ({ name: n, votes: 0 }));
+      renderVoteButtons();
+    }
+    async function addParticipant() {
+      if (!client) return;
+      const name = $("new-part").value.trim();
+      if (!name) return;
+      if (participants.includes(name)) { alert("이미 있는 참가자예요."); return; }
+      const next = participants.concat([name]);
+      const { error } = await client.from(SETTINGS).upsert({ key: LIST_KEY, value: next });
+      if (error) { alert("추가 실패: " + error.message); return; }
+      participants = next;
+      $("new-part").value = "";
+      await fetchResults();     // 새 참가자 0표로 즉시 반영
+      renderResults();
+      renderVoteButtons();
+    }
+
     /* ---------- 결과 집계 (settings 에서 talentvote:* 행 세기) ---------- */
     async function fetchResults() {
       if (!client) return { error: "no-client" };
@@ -169,7 +204,7 @@
       if (error) return { error };
       const counts = {};
       (data || []).forEach(r => { const c = Number(r.value); if (!isNaN(c)) counts[c] = (counts[c] || 0) + 1; });
-      results = PARTICIPANTS.map((name, i) => ({ name, votes: counts[i] || 0 }));
+      results = participants.map((name, i) => ({ name, votes: counts[i] || 0 }));
       if ($("admin-screen").classList.contains("show")) renderResults();
       return {};
     }
@@ -305,12 +340,15 @@
     $("btn-present").onclick = enterPresent;
     $("pv-action").onclick = doStep;
     $("pv-exit").onclick = exitPresent;
+    $("btn-add-part").onclick = addParticipant;
+    $("new-part").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addParticipant(); } });
     window.addEventListener("resize", () => { const cv = $("confetti"); if (cv.classList.contains("show")) { cv.width = innerWidth; cv.height = innerHeight; } });
 
     renderVoteButtons();
     (async function init() {
       if (!client) { $("cfg-warn").classList.add("show"); return; }
-      const { error } = await fetchResults(); // settings 테이블은 이미 존재 → 바로 동작
+      await loadParticipants();               // 공유 명단(즉석 추가 포함) 로드 → 버튼 렌더
+      const { error } = await fetchResults();  // settings 테이블은 이미 존재 → 바로 동작
       if (error) $("cfg-warn").classList.add("show"); // 연결 문제일 때만 안내
     })();
   </script>
