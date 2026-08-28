@@ -9,6 +9,12 @@
     .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
     .tab { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff; font-weight: 800; text-align: center; cursor: pointer; color: var(--muted); font-family: inherit; }
     .tab.active { background: var(--teal); color: #fff; border-color: transparent; }
+    /* 게임 서브탭 */
+    .game-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .game-tabs.hidden { display: none; }
+    .gtab { padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font-weight: 800; text-align: center; cursor: pointer; color: var(--muted); font-family: inherit; font-size: 0.95rem; }
+    .gtab.active { background: var(--teal); color: #fff; border-color: transparent; }
+    .gtab.hidden { display: none; }
     /* 좌측 세로 탭 레이아웃 */
     .rec-layout { display: grid; grid-template-columns: 210px 1fr; gap: 20px; align-items: start; }
     .rec-side { display: flex; flex-direction: column; gap: 10px; position: sticky; top: 14px; }
@@ -235,6 +241,7 @@
     body.rec-focus .page-head p { display: none; }
     body.rec-focus .rec-layout { grid-template-columns: 188px 1fr; gap: 22px; }
     body.rec-focus .rec-side .tab { padding: 13px 15px; font-size: 0.98rem; }
+    body.rec-focus .gtab { padding: 12px 20px; font-size: 1.1rem; }
 
     /* === 오른쪽 메인 콘텐츠 크게 (무대를 화면 높이만큼, 폰트/이미지 확대) === */
     /* 랜덤 지목 */
@@ -307,16 +314,21 @@
 
     <div class="rec-layout">
       <aside class="rec-side">
-        <div class="tab active" id="tab-draw">🎯 랜덤 지목</div>
-        <div class="tab hidden" id="tab-race">🏃 달리기 레이스</div>
-        <div class="tab" id="tab-beer">🍺 맥주 타이머</div>
-        <div class="tab" id="tab-song">🎵 노래 퀴즈</div>
-        <div class="tab" id="tab-danga">💰 단가왕</div>
+        <div class="tab active" id="tab-games">🎮 게임</div>
         <div class="tab" id="tab-pres">📊 팀장 발표</div>
-        <div class="tab" id="tab-biz">🔤 거래처 퀴즈</div>
-        <div class="tab" id="tab-sync">🤝 일심동체</div>
       </aside>
       <div class="rec-main">
+
+    <!-- 게임 서브탭 -->
+    <div class="game-tabs" id="game-tabs">
+      <div class="gtab" id="g-beer">🍺 맥주 타이머</div>
+      <div class="gtab active" id="g-draw">🎯 랜덤 지목</div>
+      <div class="gtab" id="g-song">🎵 노래 퀴즈</div>
+      <div class="gtab" id="g-danga">💰 단가왕</div>
+      <div class="gtab" id="g-biz">🔤 거래처 퀴즈</div>
+      <div class="gtab" id="g-sync">🤝 일심동체</div>
+      <div class="gtab hidden" id="g-race">🏃 달리기 레이스</div>
+    </div>
 
     <!-- ===== 랜덤 지목 ===== -->
     <section id="panel-draw">
@@ -675,20 +687,42 @@
       return noEx(att.map(a => a.name));
     }
 
-    /* ================= 탭 ================= */
-    ["draw", "race", "beer", "song", "danga", "pres", "biz", "sync"].forEach(k => $("tab-" + k).onclick = () => switchTab(k));
-    function switchTab(t) {
-      ["draw", "race", "beer", "song", "danga", "pres", "biz", "sync"].forEach(k => {
-        $("tab-" + k).classList.toggle("active", k === t);
-        $("panel-" + k).classList.toggle("hidden", k !== t);
+    /* ================= 탭 (상위: 🎮 게임 / 📊 팀장 발표) ================= */
+    const GAMES = ["beer", "draw", "song", "danga", "biz", "sync", "race"]; // 서브탭 순서(race 숨김)
+    let curGame = "draw";
+
+    $("tab-games").onclick = () => topSwitch("games");
+    $("tab-pres").onclick = () => topSwitch("pres");
+    function topSwitch(t) {
+      $("tab-games").classList.toggle("active", t === "games");
+      $("tab-pres").classList.toggle("active", t === "pres");
+      $("game-tabs").classList.toggle("hidden", t !== "games");
+      if (t === "pres") {
+        GAMES.forEach(k => $("panel-" + k).classList.add("hidden"));
+        Song.stop(); Danga.stop(); Sync.stop();
+        $("panel-pres").classList.remove("hidden");
+      } else {
+        $("panel-pres").classList.add("hidden");
+        Pres.stop();
+        showGame(curGame);
+      }
+    }
+
+    // 게임 서브탭
+    GAMES.forEach(k => { const el = $("g-" + k); if (el) el.onclick = () => showGame(k); });
+    function showGame(g) {
+      curGame = g;
+      GAMES.forEach(k => {
+        $("g-" + k).classList.toggle("active", k === g);
+        $("panel-" + k).classList.toggle("hidden", k !== g);
       });
-      if (t === "race") Race.onShow();
-      if (t === "beer") Beer.onShow();
-      if (t === "song") Song.onShow(); else Song.stop();
-      if (t !== "danga") Danga.stop();
-      if (t !== "pres") Pres.stop();
-      if (t === "biz") Biz.onShow();
-      if (t !== "sync") Sync.stop();
+      $("panel-pres").classList.add("hidden");
+      if (g === "beer") Beer.onShow();
+      if (g === "race") Race.onShow();
+      if (g === "song") Song.onShow(); else Song.stop();
+      if (g === "biz") Biz.onShow();
+      if (g !== "danga") Danga.stop();
+      if (g !== "sync") Sync.stop();
     }
 
     /* 발표(집중) 모드 토글 — 상단 내비 숨기고 크게. 설정은 저장됨 */
@@ -714,8 +748,9 @@
         if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return; // 입력창에선 무시
         if (!e.key || e.key.length !== 1 || !/[a-z]/i.test(e.key)) return;
         buf = (buf + e.key.toLowerCase()).slice(-SECRET.length);
-        if (buf === SECRET && $("tab-race").classList.contains("hidden")) {
-          $("tab-race").classList.remove("hidden");
+        if (buf === SECRET && $("g-race").classList.contains("hidden")) {
+          $("g-race").classList.remove("hidden");
+          if (!$("game-tabs").classList.contains("hidden")) showGame("race");
           toast("🏃 달리기 레이스 열림");
         }
       });
